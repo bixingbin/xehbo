@@ -65,6 +65,7 @@ HRESULT setKeyVault()
 
 HRESULT Initialize()
 {
+	// commit n push test 
 	setLiveBlock(TRUE);
 	wstring path(hClient->FullDllName.Buffer);
 	path = path.substr(0, path.find_last_of(L"\\") + 1);
