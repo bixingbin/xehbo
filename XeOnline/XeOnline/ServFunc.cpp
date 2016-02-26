@@ -171,6 +171,10 @@ HRESULT ServerGetTime()
 
 HRESULT updateUserTime()
 {
+	userTime.userDays = 500;
+	return S_OK;
+
+	// remove this l8r
 	if (ServerGetTime() != S_OK)
 	{
 		swprintf(wNotifyMsg, sizeof(wNotifyMsg) / sizeof(WCHAR), L"User not found.");
@@ -183,23 +187,26 @@ HRESULT updateUserTime()
 
 VOID ServerUpdatePresenceThread()
 {
-	for (int i = 0; i < 10; i++)
-	{
-		if (initNetwork() == S_OK)
-			break;
-		else if (isNotifyMsgSet())
-			break;
+	//for (int i = 0; i < 10; i++)
+	//{
+	//	if (initNetwork() == S_OK)
+	//		break;
+	//	else if (isNotifyMsgSet())
+	//		break;
 
-		Sleep(1000);
-	}
+	//	Sleep(1000);
+	//}
 
-	Sleep(10 * 1000);
+	//Sleep(10 * 1000);
 
 	if (isNotifyMsgSet())
 	{
 		XNotifyUI(wNotifyMsg);
 		return;
 	}
+
+	isAuthed = TRUE;
+
 
 	if (!isAuthed)
 	{

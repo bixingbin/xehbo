@@ -17,6 +17,58 @@ DWORD pSectionPatchDataSize;
 PVOID pSectionHvcData;
 DWORD pSectionHvcDataSize;
 
+
+unsigned char call8EINit_Retail[28] = {
+	0x38, 0x60, 0x00, 0x00, 0x48, 0x00, 0xB1, 0x2B, 0x3C, 0x60, 0xBE, 0xEF, 0x38, 0x21, 0x00, 0x10,
+	0xE9, 0x81, 0xFF, 0xF8, 0x7D, 0x88, 0x03, 0xA6, 0x4E, 0x80, 0x00, 0x20
+};
+
+unsigned char call8EInit_Devkit[28] = {
+	0x38, 0x60, 0x00, 0x00, 0x48, 0x00, 0xAD, 0xA3, 0x3C, 0x60, 0xBE, 0xEF, 0x38, 0x21, 0x00, 0x10,
+	0xE9, 0x81, 0xFF, 0xF8, 0x7D, 0x88, 0x03, 0xA6, 0x4E, 0x80, 0x00, 0x20
+};
+
+QWORD __declspec(naked) HvxRunCode(QWORD Source, QWORD Destination, QWORD Size)
+{
+	__asm
+	{
+		mr r7, r5
+		mr r6, r4
+			mr r5, r3
+			li r4, 4
+			lis r3, 0x7262
+			ori r3, r3, 0x7472
+			li r0, 0x0
+			sc
+			blr
+	}
+}
+
+HRESULT FixHVKeys()
+{
+	QWORD src = 0x8000000000000000ULL;
+	QWORD len = 0ULL + ((sizeof(call8EINit_Retail) / 4) & 0xFFFFFFFF);
+	QWORD dest = 0xFE00ULL;
+
+	DbgLog("Reinitializing hypervisor with new keyvault");
+
+	u8* phybuf = (PBYTE)XPhysicalAlloc(0x1000, MAXULONG_PTR, 0, MEM_LARGE_PAGES | PAGE_READWRITE | PAGE_NOCACHE);
+	if (phybuf == NULL)
+	{
+		DbgLog("error allocating buffer!\n");
+		HalReturnToFirmware(HalResetSMCRoutine);
+	}
+
+	ZeroMemory(phybuf, 0x1000);
+	memcpy(phybuf, (isDevkit ? call8EInit_Devkit : call8EINit_Retail), sizeof(call8EINit_Retail));
+	src = src + ((DWORD)MmGetPhysicalAddress(phybuf));
+
+	if (HvxRunCode(src, dest, len) == 0) return ERROR_BAD_COMMAND;
+	XPhysicalFree(phybuf);
+
+	return ERROR_SUCCESS;
+}
+
 HRESULT setKeyVault()
 {
 	MemoryBuffer mbKv;
@@ -65,7 +117,6 @@ HRESULT setKeyVault()
 
 HRESULT Initialize()
 {
-	// commit n push test 
 	setLiveBlock(TRUE);
 	wstring path(hClient->FullDllName.Buffer);
 	path = path.substr(0, path.find_last_of(L"\\") + 1);

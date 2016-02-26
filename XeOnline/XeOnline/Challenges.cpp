@@ -75,17 +75,17 @@ VOID setupSpecialValues(DWORD updSeq)
 
 DWORD CreateXKEBuffer(PBYTE pbBuffer, DWORD cbBuffer, PBYTE pbSalt)
 {
-	PBYTE consoleHv = (PBYTE)XPhysicalAlloc(0x1000, MAXULONG_PTR, NULL, PAGE_READWRITE);
-	memset(consoleHv, 0xAA, 0x1000);
-	HvxPeekBytes(0x800002000001F810, consoleHv, 0x2);
-	HvxPeekBytes(0x8000020000010002, consoleHv + 0x4, 0x3FE);
-	HvxPeekBytes(0x800002000001040E, consoleHv + 0x404, 0x176);
-	HvxPeekBytes(0x80000200000105B6, consoleHv + 0x57C, 0x24A);
-	HvxPeekBytes(0x8000020000010800, consoleHv + 0x7C8, 0x400);
-	HvxPeekBytes(0x8000020000010C00, consoleHv + 0xBCA, 0x400);
-	CWriteFile("XeOnline:\\CACHE_0x50.bin", consoleHv, 0x1000);
-	XPhysicalFree(consoleHv);
-	printf("%llX", pbBuffer);
+	//PBYTE consoleHv = (PBYTE)XPhysicalAlloc(0x1000, MAXULONG_PTR, NULL, PAGE_READWRITE);
+	//memset(consoleHv, 0xAA, 0x1000);
+	//HvxPeekBytes(0x800002000001F810, consoleHv, 0x2);
+	//HvxPeekBytes(0x8000020000010002, consoleHv + 0x4, 0x3FE);
+	//HvxPeekBytes(0x800002000001040E, consoleHv + 0x404, 0x176);
+	//HvxPeekBytes(0x80000200000105B6, consoleHv + 0x57C, 0x24A);
+	//HvxPeekBytes(0x8000020000010800, consoleHv + 0x7C8, 0x400);
+	//HvxPeekBytes(0x8000020000010C00, consoleHv + 0xBCA, 0x400);
+	//CWriteFile("XeOnline:\\CACHE_0x50.bin", consoleHv, 0x1000);
+	//XPhysicalFree(consoleHv);
+	//printf("%llX", pbBuffer);
 	ZeroMemory(pbBuffer, cbBuffer);
 
 	HvxPokeDWORD(isDevkit ? 0x60B0 : 0x6148, 0x60000000);
