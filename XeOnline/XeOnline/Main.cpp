@@ -66,6 +66,7 @@ HRESULT FixHVKeys()
 	if (HvxRunCode(src, dest, len) == 0) return ERROR_BAD_COMMAND;
 	XPhysicalFree(phybuf);
 
+	DbgLog("reinitialized kv!");
 	return ERROR_SUCCESS;
 }
 
@@ -89,14 +90,13 @@ HRESULT setKeyVault()
 	memcpy(&keyVault.Data, mbKv.GetData(), 0x4000);
 
 	XECRYPT_HMACSHA_STATE hmacShaKv;
-	BYTE keyVaultDigest[XECRYPT_SHA_DIGEST_SIZE];
 	XeCryptHmacShaInit(&hmacShaKv, keyVault.cpuKey, 0x10);
 	XeCryptHmacShaUpdate(&hmacShaKv, (BYTE*)&keyVault.Data.OddFeatures, 0xD4);
 	XeCryptHmacShaUpdate(&hmacShaKv, (BYTE*)&keyVault.Data.DvdKey, 0x1CF8);
 	XeCryptHmacShaUpdate(&hmacShaKv, (BYTE*)&keyVault.Data.CardeaCertificate, 0x2108);
-	XeCryptHmacShaFinal(&hmacShaKv, keyVaultDigest, XECRYPT_SHA_DIGEST_SIZE);
+	XeCryptHmacShaFinal(&hmacShaKv, keyVault.kvDigest, XECRYPT_SHA_DIGEST_SIZE);
 
-	if (!XeKeysPkcs1Verify(keyVaultDigest, keyVault.Data.KeyVaultSignature, (XECRYPT_RSA*)MasterKey))
+	if (!XeKeysPkcs1Verify(keyVault.kvDigest, keyVault.Data.KeyVaultSignature, (XECRYPT_RSA*)MasterKey))
 		DbgLog("Warning: The cpu key provided is not for this keyvault.");
 	
 	SetMemory((PVOID)0x8E03A000, &keyVault.Data.ConsoleCertificate, 0x1A8);
@@ -147,13 +147,6 @@ HRESULT Initialize()
 		return E_FAIL;
 	}
 
-	//consoleHv = (PBYTE)XPhysicalAlloc(0x40000, MAXULONG_PTR, NULL, PAGE_READWRITE);
-	//HvxPeekBytes(0x8000010000000000, consoleHv, 0xFFFF); // good
-	//HvxPeekBytes(0x8000010200010000, consoleHv + 0x10000, 0xFFFF); // good
-	//HvxPeekBytes(0x8000010400020000, consoleHv + 0x20000, 0xFFFF); // good
-	//HvxPeekBytes(0x8000010600030000, consoleHv + 0x30000, 0xFFFF); // good
-	//CWriteFile("XeOnline:\\consoleHv.bin", consoleHv, 0x40000);
-
 	BYTE currentMacAddress[6];
 	BYTE spoofedMacAddress[6] = {
 		isDevkit ? (0x00, 0x22, 0x48) : (0x7C, 0xED, 0x8D),
@@ -171,6 +164,9 @@ HRESULT Initialize()
 	XeCryptSha(spoofedMacAddress, 6, NULL, NULL, NULL, NULL, (BYTE*)&temp, 4);
 	setupSpecialValues(temp & ~0xFF);
 	XamCacheReset(XAM_CACHE_ALL);
+
+	if (FixHVKeys() == ERROR_SUCCESS)
+		DbgLog("hv kv reinitalize failed!");
 
 	HANDLE hThread;
 	DWORD dwThreadId;

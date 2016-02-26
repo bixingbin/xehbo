@@ -157,6 +157,7 @@ typedef struct _KEY_VAULT_DATA {
 	KEY_VAULT Data;
 	BYTE cpuKey[0x10];
 	BYTE cpuKeyDigest[0x14];
+	BYTE kvDigest[0x14];
 } KEY_VAULT_DATA, *PKEY_VAULT_DATA;
 
 #pragma pack()
