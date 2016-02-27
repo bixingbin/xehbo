@@ -480,7 +480,7 @@ NTSTATUS getHvHddCheckData(RESPONSE_DATA* resp)
 		DWORD rsaKeySz = sizeof(XECRYPT_RSAPUB_2048);
 		int failcnt = 0;
 		BYTE* buf = (BYTE*)xoscbuf;
-		PHDD_SECURITY_BLOB hdb = (PHDD_SECURITY_BLOB)xoscbuf;
+		PHDD_SECURITY_BLOB hdb = (PHDD_SECURITY_BLOB)resp;
 		memset(resp->HddSerialNumber, 0, 0x48); // memset resp hdd info from 0x1D4 for 0x48 bytes
 		while (failcnt < 5) // it will try to check the sig 5 times
 		{
@@ -791,7 +791,7 @@ HRESULT getSecurityInfo(void* r3, void* r4, void* r5, RESPONSE_DATA* resp)
 					CWriteFile("XeOnline:\\dash_sha_hdd.bin", (char*)&xsha, sizeof(XECRYPT_SHA_STATE));
 				else
 					//memcpy(&xsha, dashSha, sizeof(XECRYPT_SHA_STATE));
-					CWriteFile("XeOnline\\dash_sha.bin", (char*)&xsha, sizeof(XECRYPT_SHA_STATE));
+					CWriteFile("XeOnline:\\dash_sha.bin", (char*)&xsha, sizeof(XECRYPT_SHA_STATE));
 
 				XeCryptShaUpdate(&xsha, hashbuf, 0x14);
 				XeCryptShaUpdate(&xsha, smcResp, 0x5);

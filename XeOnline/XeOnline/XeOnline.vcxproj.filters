@@ -71,11 +71,8 @@
     <ClInclude Include="HV.h">
       <Filter>Header Files\System</Filter>
     </ClInclude>
-    <ClInclude Include="Xosc.h">
-      <Filter>Source Files\Other</Filter>
-    </ClInclude>
-    <ClInclude Include="xoscStructs.h">
-      <Filter>Source Files\Other</Filter>
+    <ClInclude Include="Detour.h">
+      <Filter>Header Files\Other</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -111,9 +108,6 @@
     </ClCompile>
     <ClCompile Include="HV.cpp">
       <Filter>Source Files\System</Filter>
-    </ClCompile>
-    <ClCompile Include="Xosc.cpp">
-      <Filter>Source Files\Other</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

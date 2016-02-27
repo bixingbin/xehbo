@@ -231,7 +231,7 @@ static PSECURITY_INFO_CACHE HvSecurityInfoCache = (PSECURITY_INFO_CACHE)(0x8E038
 static PDYNAMIC_REVOCATION_LIST_STATIC HvCrlCache = (PDYNAMIC_REVOCATION_LIST_STATIC)(0x8E000000);
 static PHV_KEY_HEADER_INFO HvKeyInfo = (PHV_KEY_HEADER_INFO)(0x8E03AA30); // 0x30 bytes of hashes followed by flash header cache
 
-typedef NTSTATUS(*XOSCFUNCALL)(void* 3, void* r4, void* r5, RESPONSE_DATA* resp);
+typedef NTSTATUS(*XOSCFUNCALL)(void* r3, void* r4, void* r5, RESPONSE_DATA* resp);
 #define XOSC_FUN_NUMBER		5
 
 #endif //__XOSCSTRUCTS_H
