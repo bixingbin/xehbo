@@ -146,6 +146,7 @@ HRESULT Initialize()
 	}
 
 	BYTE currentMacAddress[6];
+
 	BYTE spoofedMacAddress[6] = {
 		//isDevkit ? (0x00, 0x22, 0x48) : (0x7C, 0xED, 0x8D),
 		0x00, 0x22, 0x48,//0x7C, 0xED, 0x8D,
@@ -153,6 +154,18 @@ HRESULT Initialize()
 		keyVault.Data.ConsoleCertificate.ConsoleId.asBits.MacIndex4,
 		keyVault.Data.ConsoleCertificate.ConsoleId.asBits.MacIndex5
 	};
+
+	if ((XboxHardwareInfo->Flags & 0xF0000000) > 0x40000000)
+	{
+		spoofedMacAddress[0] = 0x7C;
+		spoofedMacAddress[1] = 0xED;
+		spoofedMacAddress[2] = 0x8D;
+	}else
+	{
+		spoofedMacAddress[0] = 0x00;
+		spoofedMacAddress[1] = 0x22;
+		spoofedMacAddress[2] = 0x48;
+	}
 
 	if (NT_SUCCESS(ExGetXConfigSetting(XCONFIG_SECURED_CATEGORY, XCONFIG_SECURED_MAC_ADDRESS, currentMacAddress, 6, NULL)))
 		if (memcmp(currentMacAddress, spoofedMacAddress, 6) != 0)
