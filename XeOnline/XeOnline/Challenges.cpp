@@ -91,6 +91,7 @@ DWORD CreateXKEBuffer(PBYTE pbBuffer, DWORD cbBuffer, PBYTE pbSalt)
 	memcpy(hvBuff + 0x20, keyVault.cpuKey, 0x10);
 	*(DWORD*)(hvBuff + 0x6) = bldrFlags;
 	*(DWORD*)(hvBuff + 0x14) = updateSequence;
+	*(DWORD*)(hvBuff + 0x30) = hvStatusFlags;
 	*(DWORD*)(hvBuff + 0x74) = cTypeFlag;
 
 	// copy over our custom challenge
@@ -101,6 +102,8 @@ DWORD CreateXKEBuffer(PBYTE pbBuffer, DWORD cbBuffer, PBYTE pbSalt)
 
 	// call our custom challenge
 	XeKeysExecute(pbBuffer, cbBuffer, MmGetPhysicalAddress(pbSalt), NULL, NULL, NULL);
+
+	*(DWORD*)(pbBuffer + 0x38) = hvStatusFlags;
 
 	// free the hv buffer
 	XPhysicalFree(hvBuff);

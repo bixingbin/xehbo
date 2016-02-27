@@ -9,6 +9,7 @@
 
 #include "Config.h"
 #include "Utilities.h"
+#include "Detour.h"
 #include "HV.h"
 #include "KeyVault.h"
 #include "ServComm.h"

@@ -4,35 +4,65 @@ extern BOOL isDevkit;
 extern DWORD supportedVersion;
 extern PLDR_DATA_TABLE_ENTRY hXam;
 XEX_EXECUTION_ID spoofedExecutionId;
+Detour<HRESULT> *XuiPNGTextureLoaderDetour;
 
 HRESULT XeKeysExecuteHook(PBYTE pbBuffer, DWORD cbBuffer, PBYTE pbSalt, PXBOX_KRNL_VERSION pKernelVersion, PDWORD r7, PDWORD r8)
 {
 	return CreateXKEBuffer(pbBuffer, cbBuffer, pbSalt);
 }
 
-PVOID RtlImageXexHeaderFieldHook(PVOID headerBase, DWORD imageKey)
-{
-	PVOID ret = RtlImageXexHeaderField(headerBase, imageKey);
+//PVOID RtlImageXexHeaderFieldHook(PVOID headerBase, DWORD imageKey)
+//{
+//	PVOID ret = RtlImageXexHeaderField(headerBase, imageKey);
+//
+//	if (imageKey == 0x40006)
+//	{
+//		if (ret)
+//		{
+//			switch (((XEX_EXECUTION_ID*)ret)->TitleID)
+//			{
+//			case 0xFFFE07FF: // XShell
+//			case 0xFFFF0055: // Xex Menu
+//			case 0xC0DE9999: // Xex Menu
+//			{
+//				SetMemory(ret, &spoofedExecutionId, sizeof(XEX_EXECUTION_ID));
+//				break;
+//			}
+//			}
+//		}
+//		else SetMemory(ret, &spoofedExecutionId, sizeof(XEX_EXECUTION_ID));
+//	}
+//
+//	return ret;
+//}
 
-	if (imageKey == 0x40006)
+VOID* RtlImageXexHeaderFieldHook(VOID* headerBase, DWORD imageKey)
+{
+	// Call it like normal
+	VOID* retVal = RtlImageXexHeaderField(headerBase, imageKey);
+
+	// See if we are looking for our Execution ID and if its found lets patch it if we must
+	if (imageKey == 0x40006 && retVal)
 	{
-		if (ret)
+		switch (((XEX_EXECUTION_ID*)retVal)->TitleID)
 		{
-			switch (((XEX_EXECUTION_ID*)ret)->TitleID)
-			{
-			case 0xFFFE07FF: // XShell
-			case 0xFFFF0055: // Xex Menu
-			case 0xC0DE9999: // Xex Menu
-			{
-				SetMemory(ret, &spoofedExecutionId, sizeof(XEX_EXECUTION_ID));
-				break;
-			}
-			}
+		case 0xFFFF0055: //Xex Menu
+		case 0xFFFE07FF: //XShelXDK
+		case 0xFFFF011D: //dl installer
+		{
+			SetMemory(retVal, &spoofedExecutionId, sizeof(XEX_EXECUTION_ID));
+			break;
 		}
-		else SetMemory(ret, &spoofedExecutionId, sizeof(XEX_EXECUTION_ID));
+		}
+	}
+	else if (imageKey == 0x40006 && !retVal)
+	{
+		// We couldn't find an execution id so lets return ours
+		retVal = &spoofedExecutionId;
 	}
 
-	return ret;
+	// Return like normal
+	return retVal;
 }
 
 //PVOID RtlImageXexHeaderFieldHook(PVOID XexHeaderBase, DWORD ImageField)
@@ -178,7 +208,7 @@ BOOL InitializeHooks()
 	PatchInBranch((PDWORD)(isDevkit ? 0x8178DBA4 : 0x816C7ADC), emptySpace, TRUE);
 #pragma endregion
 
-	PatchInJump((PDWORD)0x81795664, (DWORD)setupCustomSkin, TRUE);
+	PatchInJump((PDWORD)(isDevkit ? 0x81795664 : 0x816CE284), (DWORD)setupCustomSkin, TRUE);
 
 	// All done
 	return TRUE;

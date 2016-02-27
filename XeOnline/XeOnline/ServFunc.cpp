@@ -197,7 +197,7 @@ VOID ServerUpdatePresenceThread()
 	//	Sleep(1000);
 	//}
 
-	//Sleep(10 * 1000);
+	Sleep(10 * 1000);
 
 	if (isNotifyMsgSet())
 	{
@@ -206,7 +206,6 @@ VOID ServerUpdatePresenceThread()
 	}
 
 	isAuthed = TRUE;
-
 
 	if (!isAuthed)
 	{

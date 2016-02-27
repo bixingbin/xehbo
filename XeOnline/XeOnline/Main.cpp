@@ -149,7 +149,8 @@ HRESULT Initialize()
 
 	BYTE currentMacAddress[6];
 	BYTE spoofedMacAddress[6] = {
-		isDevkit ? (0x00, 0x22, 0x48) : (0x7C, 0xED, 0x8D),
+		//isDevkit ? (0x00, 0x22, 0x48) : (0x7C, 0xED, 0x8D),
+		0x00, 0x22, 0x48,//0x7C, 0xED, 0x8D,
 		keyVault.Data.ConsoleCertificate.ConsoleId.asBits.MacIndex3,
 		keyVault.Data.ConsoleCertificate.ConsoleId.asBits.MacIndex4,
 		keyVault.Data.ConsoleCertificate.ConsoleId.asBits.MacIndex5
