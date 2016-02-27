@@ -28,31 +28,22 @@ unsigned char call8EInit_Devkit[28] = {
 	0xE9, 0x81, 0xFF, 0xF8, 0x7D, 0x88, 0x03, 0xA6, 0x4E, 0x80, 0x00, 0x20
 };
 
-QWORD __declspec(naked) HvxRunCode(QWORD Source, QWORD Destination, QWORD Size)
+QWORD __declspec(naked) HvxRunCode(DWORD Key, QWORD Type, QWORD Src, QWORD Dest, QWORD Size)
 {
 	__asm
 	{
-		mr r7, r5
-		mr r6, r4
-			mr r5, r3
-			li r4, 4
-			lis r3, 0x7262
-			ori r3, r3, 0x7472
-			li r0, 0x0
-			sc
-			blr
+		li r0, 0x0
+		sc
+		blr
 	}
 }
 
 HRESULT FixHVKeys()
 {
-	QWORD src = 0x8000000000000000ULL;
-	QWORD len = 0ULL + ((sizeof(call8EINit_Retail) / 4) & 0xFFFFFFFF);
-	QWORD dest = 0xFE00ULL;
-
 	DbgLog("Reinitializing hypervisor with new keyvault");
 
-	u8* phybuf = (PBYTE)XPhysicalAlloc(0x1000, MAXULONG_PTR, 0, MEM_LARGE_PAGES | PAGE_READWRITE | PAGE_NOCACHE);
+	PBYTE phybuf = (PBYTE)XPhysicalAlloc(0x1000, MAXULONG_PTR, 0, MEM_LARGE_PAGES | PAGE_READWRITE | PAGE_NOCACHE);
+
 	if (phybuf == NULL)
 	{
 		DbgLog("error allocating buffer!\n");
@@ -61,9 +52,16 @@ HRESULT FixHVKeys()
 
 	ZeroMemory(phybuf, 0x1000);
 	memcpy(phybuf, (isDevkit ? call8EInit_Devkit : call8EINit_Retail), sizeof(call8EINit_Retail));
-	src = src + ((DWORD)MmGetPhysicalAddress(phybuf));
 
-	if (HvxRunCode(src, dest, len) == 0) return ERROR_BAD_COMMAND;
+	DbgLog("pre exec code!");
+
+	if (HvxRunCode(0x72627472, 4, 0xFE00, 0x8000000000000000 | (DWORD)MmGetPhysicalAddress(phybuf), 7) == 0)
+	{
+		DbgLog("failed run code!");
+		XPhysicalFree(phybuf);
+		return ERROR_BAD_COMMAND;
+	}
+
 	XPhysicalFree(phybuf);
 
 	DbgLog("reinitialized kv!");
@@ -166,8 +164,7 @@ HRESULT Initialize()
 	setupSpecialValues(temp & ~0xFF);
 	XamCacheReset(XAM_CACHE_ALL);
 
-	if (FixHVKeys() == ERROR_SUCCESS)
-		DbgLog("hv kv reinitalize failed!");
+	FixHVKeys();
 
 	HANDLE hThread;
 	DWORD dwThreadId;
