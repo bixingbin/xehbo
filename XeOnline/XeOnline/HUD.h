@@ -45,5 +45,4 @@ public:
 
 HRESULT XuiPNGTextureLoaderHook(IXuiDevice *pDevice, LPCWSTR szFileName, XUIImageInfo *pImageInfo, IDirect3DTexture9 **ppTex);
 HRESULT setupCustomSkin(HANDLE hModule, PWCHAR wModuleName, PWCHAR const cdModule, PWCHAR hdRes, DWORD dwSize);
-VOID XamBuildXamResourceLocatorHook(PWCHAR xurFile, PWCHAR hRes, DWORD dwSize);
 VOID patchHud(PLDR_DATA_TABLE_ENTRY hModule);

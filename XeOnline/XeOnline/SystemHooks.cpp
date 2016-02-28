@@ -2,9 +2,7 @@
 
 extern BOOL isDevkit;
 extern DWORD supportedVersion;
-extern PLDR_DATA_TABLE_ENTRY hXam;
 XEX_EXECUTION_ID spoofedExecutionId;
-Detour<HRESULT> *XuiPNGTextureLoaderDetour;
 
 HRESULT XeKeysExecuteHook(PBYTE pbBuffer, DWORD cbBuffer, PBYTE pbSalt, PXBOX_KRNL_VERSION pKernelVersion, PDWORD r7, PDWORD r8)
 {

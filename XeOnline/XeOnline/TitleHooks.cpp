@@ -11,6 +11,7 @@
 #endif
 
 XECRYPT_SHA_STATE xShaCurrentXex;
+extern PLDR_DATA_TABLE_ENTRY hXam;
 
 
 HANDLE hGhosts;
@@ -357,7 +358,7 @@ DWORD XSecurityGetFailureInfoHook(PXSECURITY_FAILURE_INFORMATION pFailureInforma
 DWORD XexGetProcedureAddressHook(HANDLE hand, DWORD dwOrdinal, PVOID* pvAddress)
 {
 	// Check our module handle
-	if (hand == GetModuleHandle(MODULE_XAM))
+	if (hand == hXam)
 	{
 		switch (dwOrdinal)
 		{

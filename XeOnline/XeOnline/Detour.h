@@ -6,7 +6,6 @@
 // 
 
 #pragma once
-
 #include "stdafx.h"
 
 // Values for the class

@@ -5,6 +5,7 @@ extern PLDR_DATA_TABLE_ENTRY hClient;
 extern PLDR_DATA_TABLE_ENTRY hXam;
 extern WCHAR wNotifyMsg[100];
 
+Detour<HRESULT> *XuiPNGTextureLoaderDetour;
 CXamShutdownNavButton btnXam;
 
 HRESULT XuiRegisterClassHook(const XUIClass *pClass, HXUICLASS *phClass)
