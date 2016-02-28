@@ -16,39 +16,43 @@ extern PLDR_DATA_TABLE_ENTRY hXam;
 
 HANDLE hGhosts;
 
-DWORD spAddressGhosts;
-DWORD mpAddressGhosts;
+
 extern BOOL isDevkit;
-DWORD spAddressAW;
-DWORD mpAddressAW;
-DWORD spPatch1AW;
-DWORD spPatch2AW;
-DWORD spPatch3AW;
-DWORD spPatch4AW;
-DWORD mpPatch1AW;
-DWORD mpPatch2AW;
-DWORD mpPatch3AW;
-DWORD mpPatch4AW;
-DWORD mpPatchAWNew;
-DWORD mpPatch1Ghosts;
-DWORD mpPatch2Ghosts;
-DWORD mpPatch3Ghosts;
-DWORD mpPatch4Ghosts;
-DWORD mpPatch5Ghosts;
-DWORD spPatch1Ghosts;
-DWORD spPatch2Ghosts;
-DWORD spPatch3Ghosts;
-DWORD spBO2Patch1;
-DWORD spPatch1BO2;
-DWORD spPatch2BO2;
-DWORD spPatch3BO2;
-DWORD spPatch4BO2;
-DWORD mpBO2Patch1;
-DWORD mpPatch1BO2;
-DWORD mpPatch2BO2;
-DWORD mpPatch3BO2;
-DWORD mpPatch4BO2;
-DWORD mpPatch5BO2;
+//AW TU17
+//SP
+DWORD spPatch1AW = 0x825891DC;
+DWORD spPatch2AW = 0x825891A4;
+DWORD spPatch3AW = 0x825891B0;
+//MP
+DWORD mpPatch1AW = 0x822CA0AC;
+DWORD mpPatch2AW = 0x822CA0F4;
+DWORD mpPatch3AW = 0x822CA0C0;
+DWORD mpPatch4AW = 0x822CA0CC;
+//Ghosts TU17
+//MP
+DWORD mpPatch1Ghosts = 0x82627614;
+DWORD mpPatch2Ghosts = 0x8262767C;
+DWORD mpPatch3Ghosts = 0x82627628;
+DWORD mpPatch4Ghosts = 0x82627634;
+DWORD mpPatch5Ghosts = 0x82627650;
+//SP
+DWORD spPatch1Ghosts = 0x8251174C;
+DWORD spPatch2Ghosts = 0x82511714;
+DWORD spPatch3Ghosts = 0x82511720;
+//BO2 TU18
+//SP
+DWORD spBO2Patch1 = 0x38C00001;
+DWORD spPatch1BO2 = 0x82409128;
+DWORD spPatch2BO2 = 0x824090FC;
+DWORD spPatch3BO2 = 0x82409104;
+DWORD spPatch4BO2 = 0x824A7CB8;
+//MP
+DWORD mpBO2Patch1 = 0x39200001;
+DWORD mpPatch1BO2 = 0x824E0DF8;
+DWORD mpPatch2BO2 = 0x824E0DCC;
+DWORD mpPatch3BO2 = 0x824E0DD4;
+DWORD mpPatch4BO2 = 0x8228CF80;
+DWORD mpPatch5BO2 = 0x8259A65C;
 
 //extern ORDINALS* ordinals;
 extern QWORD qwRandomMachineID;
