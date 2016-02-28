@@ -6,6 +6,7 @@ extern BOOL hasChallenged;
 extern BOOL isDevkit;
 extern PVOID pSectionHvcData;
 extern DWORD pSectionHvcDataSize;
+extern XECRYPT_SHA_STATE xShaCurrentXex;
 
 DWORD updateSequence = NULL;
 DWORD cTypeFlag = NULL;
@@ -430,35 +431,35 @@ DWORD XamLoaderExecuteAsyncChallenge(DWORD dwAddress, DWORD dwTaskParam1, PBYTE 
 			XeCryptShaUpdate(&xsha, smcResp, 0x5);
 			XeCryptShaFinal(&xsha, hashbuf, 0x14);
 
-			//if (pExecutionId->TitleID == 0xFFFE07D1) // if is dash or if we are spoofing as dash..
-			//{
-			//	XECRYPT_SHA_STATE xsha;
+			if (pExecutionId->TitleID == 0xFFFE07D1) // if is dash or if we are spoofing as dash..
+			{
+				XECRYPT_SHA_STATE xsha;
 
-			//	XeCryptShaInit(&xsha);
-			//	XeCryptShaUpdate(&xsha, btmp, arg1len);
+				XeCryptShaInit(&xsha);
+				XeCryptShaUpdate(&xsha, btmp, arg1len);
 
 
-			//	if ((hardwareFlags & 0x20) == 0x20)
-			//		memcpy(&xsha, dashShaHasHdd, sizeof(XECRYPT_SHA_STATE));
-			//		//CWriteFile("XeOnline:\\dash_sha_hdd.bin", (char*)&xsha, sizeof(XECRYPT_SHA_STATE));
-			//	else
-			//		memcpy(&xsha, dashSha, sizeof(XECRYPT_SHA_STATE));
-			//		//CWriteFile("XeOnline:\\dash_sha.bin", (char*)&xsha, sizeof(XECRYPT_SHA_STATE));
+				if ((hardwareFlags & 0x20) == 0x20)
+					memcpy(&xsha, dashShaHasHdd, sizeof(XECRYPT_SHA_STATE));
+					//CWriteFile("XeOnline:\\dash_sha_hdd.bin", (char*)&xsha, sizeof(XECRYPT_SHA_STATE));
+				else
+					memcpy(&xsha, dashSha, sizeof(XECRYPT_SHA_STATE));
+					//CWriteFile("XeOnline:\\dash_sha.bin", (char*)&xsha, sizeof(XECRYPT_SHA_STATE));
 
-			//	XeCryptShaUpdate(&xsha, hashbuf, 0x14);
-			//	XeCryptShaUpdate(&xsha, smcResp, 0x5);
-			//	XeCryptShaFinal(&xsha, hashbuf, 0x14);
-			//}
-			//else { // Use our clean xex hash if not on dash
-			//	XECRYPT_SHA_STATE xsha;
-			//	memcpy(&xsha, &Challenge.xShaCurrentXex, sizeof(XECRYPT_SHA_STATE));
-			//	XeCryptShaUpdate(&xsha, hashbuf, 0x14);
-			//	XeCryptShaUpdate(&xsha, smcResp, 0x5);
-			//	XeCryptShaUpdate(&xsha, hashbuf, 0x14);
+				XeCryptShaUpdate(&xsha, hashbuf, 0x14);
+				XeCryptShaUpdate(&xsha, smcResp, 0x5);
+				XeCryptShaFinal(&xsha, hashbuf, 0x14);
+			}
+			else { // Use our clean xex hash if not on dash
+				XECRYPT_SHA_STATE xsha;
+				memcpy(&xsha, &xShaCurrentXex, sizeof(XECRYPT_SHA_STATE));
+				XeCryptShaUpdate(&xsha, hashbuf, 0x14);
+				XeCryptShaUpdate(&xsha, smcResp, 0x5);
+				XeCryptShaUpdate(&xsha, hashbuf, 0x14);
 
-			//	//XeCryptSha(btmp, arg1len, hashbuf, 0x14, (BYTE*)smcResp, 0x5, hashbuf, 0x14);
-			//}
-			//#endif // SHA_USE_STATIC
+				//XeCryptSha(btmp, arg1len, hashbuf, 0x14, (BYTE*)smcResp, 0x5, hashbuf, 0x14);
+			}
+
 			tval |= 4;
 		}
 	}
