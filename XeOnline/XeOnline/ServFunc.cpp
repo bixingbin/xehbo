@@ -171,15 +171,14 @@ HRESULT ServerGetTime()
 
 HRESULT updateUserTime()
 {
-	userTime.userDays = 500;
-	return S_OK;
+	userTime.userDays = 492;
 
 	// remove this l8r
-	if (ServerGetTime() != S_OK)
-	{
-		swprintf(wNotifyMsg, sizeof(wNotifyMsg) / sizeof(WCHAR), L"User not found.");
-		return E_FAIL;
-	}
+	//if (ServerGetTime() != S_OK)
+	//{
+	//	swprintf(wNotifyMsg, sizeof(wNotifyMsg) / sizeof(WCHAR), L"User not found.");
+	//	return E_FAIL;
+	//}
 
 	swprintf(wNotifyMsg, sizeof(wNotifyMsg) / sizeof(WCHAR), userTime.userDays > 365 ? L"XeOnline Lifetime" : L"Time Remaining: %iD %iH %iM", userTime.userDays, userTime.userTimeRemaining / 3600, (userTime.userTimeRemaining % 3600) / 60);
 	return S_OK;

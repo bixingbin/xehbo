@@ -55,8 +55,10 @@ VOID s_OnMessageBoxReturn(DWORD dwButtonPressed, XHUDOPENSTATE* hudOpenState)
 	}
 
 	PBYTE tempBuff = (PBYTE)XPhysicalAlloc(0x1000, MAXULONG_PTR, NULL, PAGE_READWRITE);
+	BYTE tempSaltb[0x10] = { 0x09, 0xCF, 0xC4, 0x6D, 0x4F, 0x0E, 0x0D, 0xED, 0x3C, 0x17, 0x91, 0x7C, 0xF4, 0x81, 0x4B, 0x27 };
 	PBYTE tempSalt = (PBYTE)XPhysicalAlloc(0x100, MAXULONG_PTR, 0x80, MEM_LARGE_PAGES | PAGE_READWRITE);
-	memset(tempSalt, 0xFF, 0x10);
+	memcpy(tempSalt, tempSaltb, 0x10);
+	//memset(tempSalt, 0xFF, 0x10);
 	CreateXKEBuffer(tempBuff, 0x1000, tempSalt);
 	XPhysicalFree(tempSalt);
 	XPhysicalFree(tempBuff);

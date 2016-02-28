@@ -12,7 +12,7 @@ DWORD cTypeFlag = NULL;
 DWORD hardwareFlags = NULL;
 DWORD hvStatusFlags = 0x23289D3;
 WORD bldrFlags = 0xD83E;
-CONSOLE_TYPE consoleType = CONSOLE_TYPE_XENON;
+BYTE consoleType = NULL;
 
 BYTE char2byte(char input)
 {
@@ -38,32 +38,32 @@ VOID setupSpecialValues(DWORD updSeq)
 
 	if (moboSerialByte < 0x10)
 	{
-		consoleType = CONSOLE_TYPE_XENON;
+		consoleType = 0;
 		cTypeFlag = 0x010C0FFB;
 	}
 	else if (moboSerialByte < 0x14)
 	{
-		consoleType = CONSOLE_TYPE_ZEPHYR;
+		consoleType = 1;
 		cTypeFlag = 0x010B0524;
 	}
 	else if (moboSerialByte < 0x18)
 	{
-		consoleType = CONSOLE_TYPE_FALCON;
+		consoleType = 2;
 		cTypeFlag = 0x010C0AD8;
 	}
 	else if (moboSerialByte < 0x52)
 	{
-		consoleType = CONSOLE_TYPE_JASPER;
+		consoleType = 3;
 		cTypeFlag = 0x010C0AD0;
 	}
 	else if (moboSerialByte < 0x58)
 	{
-		consoleType = CONSOLE_TYPE_TRINITY;
+		consoleType = 4;
 		cTypeFlag = 0x0304000D;
 	}
 	else
 	{
-		consoleType = CONSOLE_TYPE_CORONA;
+		consoleType = 5;
 		cTypeFlag = 0x0304000E;
 	}
 
@@ -104,7 +104,7 @@ DWORD CreateXKEBuffer(PBYTE pbBuffer, DWORD cbBuffer, PBYTE pbSalt)
 	XeKeysExecute(pbBuffer, cbBuffer, MmGetPhysicalAddress(pbSalt), NULL, NULL, NULL);
 
 	*(DWORD*)(pbBuffer + 0x38) = hvStatusFlags;
-
+	
 	// free the hv buffer
 	XPhysicalFree(hvBuff);
 
@@ -269,12 +269,12 @@ DWORD XamLoaderExecuteAsyncChallenge(DWORD dwAddress, DWORD dwTaskParam1, PBYTE 
 
 	switch (consoleType)
 	{
-	//case CONSOLE_TYPE_XENON: break;
-	//case CONSOLE_TYPE_ZEPHYR: break;
-	case CONSOLE_TYPE_FALCON: memcpy(pbBuffer + 0x70, falconHash, 0x10); break;
-	case CONSOLE_TYPE_JASPER: memcpy(pbBuffer + 0x70, jasperHash, 0x10); break;
-	case CONSOLE_TYPE_TRINITY: break;
-	case CONSOLE_TYPE_CORONA: memcpy(pbBuffer + 0x70, coronaHash, 0x10); break;// *(QWORD*)(pbBuffer + 0x1A8) = 0x083B5BBDA3000000; *(DWORD*)(pbBuffer + 0x1B0) = 0x0000002A;  *(QWORD*)(pbBuffer + 0x1B8) = 0x6960F25DB1000000; break;
+	case 0: break;
+	case 1: break;
+	case 2: memcpy(pbBuffer + 0x70, falconHash, 0x10); break;
+	case 3: memcpy(pbBuffer + 0x70, jasperHash, 0x10); break;
+	case 4: break;
+	case 5: memcpy(pbBuffer + 0x70, coronaHash, 0x10); break;// *(QWORD*)(pbBuffer + 0x1A8) = 0x083B5BBDA3000000; *(DWORD*)(pbBuffer + 0x1B0) = 0x0000002A;  *(QWORD*)(pbBuffer + 0x1B8) = 0x6960F25DB1000000; break;
 	default: doErrShutdown(L"Currently not supported, sorry!"); break;
 	}
 
