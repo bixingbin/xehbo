@@ -11,7 +11,6 @@
   </mediatypes>
 
   <sysdll/>
-  <privilege id="6" />
   <section file="sectionData\xui.xzp" name="xui" memory="RO"/>
   <section file="sectionData\hvc.bin" name="HVC" memory="RO"/>
   <section file="sectionData\patches_retail.bin" name="RETAILP" memory="RO"/>

@@ -4,8 +4,8 @@ extern BOOL isDevkit;
 extern PLDR_DATA_TABLE_ENTRY hClient;
 extern PLDR_DATA_TABLE_ENTRY hXam;
 extern WCHAR wNotifyMsg[100];
+extern Detour<HRESULT> *XuiPNGTextureLoaderDetour;
 
-Detour<HRESULT> *XuiPNGTextureLoaderDetour;
 CXamShutdownNavButton btnXam;
 
 HRESULT XuiRegisterClassHook(const XUIClass *pClass, HXUICLASS *phClass)
@@ -169,7 +169,7 @@ HRESULT XuiPNGTextureLoaderHook(IXuiDevice *pDevice, LPCWSTR szFileName, XUIImag
 	else if (wcscmp(szFileName, L"xam://xenonLogo.png") == 0)
 		XamBuildResourceLocator(hClient, L"xui", L"xenonLogo.png", sectionFile, 50);
 	
-	return XuiPNGTextureLoader(pDevice, wcslen(sectionFile) > 5 ? sectionFile : szFileName, pImageInfo, ppTex);
+	return XuiPNGTextureLoaderDetour->CallOriginal(pDevice, wcslen(sectionFile) > 5 ? sectionFile : szFileName, pImageInfo, ppTex);
 }
 
 HRESULT setupCustomSkin(HANDLE hModule, PWCHAR wModuleName, PWCHAR const cdModule, PWCHAR hdRes, DWORD dwSize)

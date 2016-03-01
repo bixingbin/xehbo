@@ -3,29 +3,14 @@
 
 #define GetPointer(X) *(DWORD*)(X)
 
-// lets you get/set option values by their ini name, returns TRUE if successful and FALSE if not
-typedef BOOL(*DLAUNCHGETOPTVALBYNAME)(char* optName, PDWORD val);
-typedef BOOL(*DLAUNCHSETOPTVALBYNAME)(char* optName, PDWORD val);
-static DLAUNCHGETOPTVALBYNAME dlaunchGetOptValByName = NULL;
-static DLAUNCHSETOPTVALBYNAME dlaunchSetOptValByName = NULL;
+static BOOL(__cdecl *dlaunchSetOptValByName)(CONST PCHAR optName, PDWORD val); // set when setLiveBlock is called
+static HRESULT(__cdecl *DevSetMemory)(LPVOID lpbAddr, DWORD cb, LPCVOID lpbBuf, LPDWORD pcbRet); // set when SetMemory is called
 
-typedef HRESULT(*pDmSetMemory)(LPVOID lpbAddr, DWORD cb, LPCVOID lpbBuf, LPDWORD pcbRet);
-
-typedef enum
-{
-	DL_ORDINALS_LDAT = 1,
-	DL_ORDINALS_STARTSYSMOD,
-	DL_ORDINALS_SHUTDOWN,
-	DL_ORDINALS_FORCEINILOAD,
-	DL_ORDINALS_GETNUMOPTS,
-	DL_ORDINALS_GETOPTINFO,
-	DL_ORDINALS_GETOPTVAL,
-	DL_ORDINALS_SETOPTVAL,
-	DL_ORDINALS_GETOPTVALBYNAME,
-	DL_ORDINALS_SETOPTVALBYNAME,
-	DL_ORDINALS_GETDRIVELIST,
-	DL_ORDINALS_GETDRIVEINFO,
-} DL_ORDINALS;
+typedef struct _LAUNCH_SYS_MSG {
+	XNOTIFYQUEUEUI_TYPE Type;
+	PWCHAR Message;
+	DWORD Delay;
+} LAUNCH_SYS_MSG, *PLAUNCH_SYS_MSG;
 
 class MemoryBuffer
 {

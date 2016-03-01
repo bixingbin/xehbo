@@ -89,8 +89,7 @@ HRESULT setLiveBlock(BOOL enable)
 		return S_OK;
 	}
 
-	if (!dlaunchSetOptValByName)dlaunchSetOptValByName = (DLAUNCHSETOPTVALBYNAME)ResolveFunction("launch.xex", DL_ORDINALS_SETOPTVALBYNAME);
-	if (!dlaunchGetOptValByName)dlaunchGetOptValByName = (DLAUNCHGETOPTVALBYNAME)ResolveFunction("launch.xex", DL_ORDINALS_GETOPTVALBYNAME);
+	if (!dlaunchSetOptValByName) dlaunchSetOptValByName = (BOOL(__cdecl *)(CONST PCHAR, PDWORD))ResolveFunction("launch.xex", 10);
 
 	// set liveblock
 	if (!dlaunchSetOptValByName("liveblock", &value))
@@ -443,29 +442,18 @@ BOOL FileExists(LPCSTR lpFileName)
 	return TRUE;
 }
 
-// Resolve set memory
-pDmSetMemory DevSetMemory = NULL;
-
 HRESULT SetMemory(VOID* Destination, VOID* Source, DWORD Length)
 {
-	// Try to resolve our function
-	if (DevSetMemory == NULL && isDevkit)
+	if (isDevkit)
 	{
-		DevSetMemory = (pDmSetMemory)ResolveFunction("xbdm.xex", 40);
+		if(!DevSetMemory) DevSetMemory = (HRESULT(__cdecl *)(LPVOID, DWORD, LPCVOID, LPDWORD))ResolveFunction("xbdm.xex", 40);
+		if (DevSetMemory(Destination, Length, Source, NULL) == MAKE_HRESULT(0, 0x2DA, 0))
+			return ERROR_SUCCESS;
 	}
-
-	// Now lets try to set our memory
-	if (DevSetMemory == NULL)
+	else
 	{
 		memcpy(Destination, Source, Length);
 		return ERROR_SUCCESS;
-	}
-	else if (isDevkit)
-	{
-		if (DevSetMemory(Destination, Length, Source, NULL) == MAKE_HRESULT(0, 0x2DA, 0))
-		{
-			return ERROR_SUCCESS;
-		}
 	}
 
 	// We have a problem...
@@ -507,11 +495,6 @@ DWORD ApplyPatches(CHAR* FilePath, const VOID* DefaultPatches)
 	return patchCount;
 }
 
-typedef struct _LAUNCH_SYS_MSG {
-	XNOTIFYQUEUEUI_TYPE Type;
-	PWCHAR Message;
-	DWORD Delay;
-} LAUNCH_SYS_MSG, *PLAUNCH_SYS_MSG;
 LAUNCH_SYS_MSG notifyData;
 
 VOID xNotifyThread()

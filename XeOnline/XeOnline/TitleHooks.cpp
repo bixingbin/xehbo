@@ -6,18 +6,12 @@
 #include "ServComm.h"
 #include "HUD.h"
 
-#if defined(GHOSTS_PUBLIC_CHEATER) || defined(AW_PUBLIC_CHEATER)
-#include "Ghosts.h"
-#endif
-
 XECRYPT_SHA_STATE xShaCurrentXex;
 extern PLDR_DATA_TABLE_ENTRY hXam;
-
-
-HANDLE hGhosts;
-
-
 extern BOOL isDevkit;
+
+#define SHOWFLAGS
+
 //AW TU17
 //SP
 DWORD spPatch1AW = 0x825891DC;
@@ -54,7 +48,6 @@ DWORD mpPatch3BO2 = 0x824E0DD4;
 DWORD mpPatch4BO2 = 0x8228CF80;
 DWORD mpPatch5BO2 = 0x8259A65C;
 
-//extern ORDINALS* ordinals;
 extern QWORD qwRandomMachineID;
 extern BYTE bRandomMacAddress[];
 extern CHAR cRandomConsoleSerialNumber[];
@@ -62,14 +55,10 @@ extern CHAR cRandomConsoleID[];
 extern DWORD dwChalLength1;
 extern DWORD dwChalLength2;
 
-//extern int applyPatchData(DWORD* patchData);
-
 static QWORD RandomMachineID;
 static BYTE RandomMacAddress[6];
 static char RandomConsoleSerialNumber[12];
 static char RandomConsoleID[12];
-
-//DWORD ServerGetSecurityAuth(DWORD offsetIndexReq);
 
 DWORD GetModuleImportCallAddress(LDR_DATA_TABLE_ENTRY* moduleHandle, CHAR* ImportedModuleName, DWORD Ordinal)
 {
@@ -121,7 +110,6 @@ DWORD GetModuleImportCallAddress(LDR_DATA_TABLE_ENTRY* moduleHandle, CHAR* Impor
 	// Return our result
 	return result;
 }
-
 
 char GenerateRandomNumericalCharacter()
 {
@@ -251,14 +239,14 @@ __declspec(naked) INT AnswerChallenges(__int64 r3, __int64 r4, DWORD ChallengeRe
 VOID AnswerChallengesHook(__int64 r3, __int64 r4, DWORD dwChallengeResponse) //This is the actual hook it self, setting the security flag in the response.
 {
 	// Setup our structure
-	//PCOD_CHAL_RESP ChallengeResponse = (PCOD_CHAL_RESP)(dwChallengeResponse + 0x22);
+	PCOD_CHAL_RESP ChallengeResponse = (PCOD_CHAL_RESP)(dwChallengeResponse + 0x22);
 #if defined(SHOWFLAGS)
-	DbgPrint("AW Security Flag = 0x%02X\n", ChallengeResponse->bSecurityFlag);
+	DbgLog("AW Security Flag = 0x%02X\n", ChallengeResponse->bSecurityFlag);
 #endif
 	// Spoof our security flag
-	//ChallengeResponse->bSecurityFlag = 0x0B; // The right flag is 0x0B on AW
+	ChallengeResponse->bSecurityFlag = 0x0B; // The right flag is 0x0B on AW
 #if defined(SHOWFLAGS)
-	DbgPrint("Spoofed Flag = 0x%02X\n", ChallengeResponse->bSecurityFlag);
+	DbgLog("Spoofed Flag = 0x%02X\n", ChallengeResponse->bSecurityFlag);
 #endif
 	AnswerChallenges(r3, r4, dwChallengeResponse);
 }
@@ -266,14 +254,14 @@ VOID AnswerChallengesHook(__int64 r3, __int64 r4, DWORD dwChallengeResponse) //T
 VOID GhostsChallengesHook(__int64 r3, __int64 r4, DWORD dwChallengeResponse)
 {
 	// Setup our structure
-	//PCOD_CHAL_RESP ChallengeResponse = (PCOD_CHAL_RESP)(dwChallengeResponse + 0x1E);
+	PCOD_CHAL_RESP ChallengeResponse = (PCOD_CHAL_RESP)(dwChallengeResponse + 0x1E);
 #if defined(SHOWFLAGS)
-	DbgPrint("Ghosts Security Flag = 0x%02X\n", ChallengeResponse->bSecurityFlag);
+	DbgLog("Ghosts Security Flag = 0x%02X\n", ChallengeResponse->bSecurityFlag);
 #endif
 	// Spoof our security flag
-	//ChallengeResponse->bSecurityFlag = 0x0F; // The right flag is 0x0F on Ghosts
+	ChallengeResponse->bSecurityFlag = 0x0F; // The right flag is 0x0F on Ghosts
 #if defined(SHOWFLAGS)
-	DbgPrint("Spoofed Flag = 0x%02X\n", ChallengeResponse->bSecurityFlag);
+	DbgLog("Spoofed Flag = 0x%02X\n", ChallengeResponse->bSecurityFlag);
 #endif
 	AnswerChallenges(r3, r4, dwChallengeResponse);
 }
@@ -401,7 +389,7 @@ VOID InitializeBlackOps2Hooks(XEX_EXECUTION_ID* pExecutionId, PLDR_DATA_TABLE_EN
 	BOOL ShouldContinue = (wcscmp(ModuleHandle->BaseDllName.Buffer, L"default.xex") == 0 || wcscmp(ModuleHandle->BaseDllName.Buffer, L"default_mp.xex") == 0);
 	if (!ShouldContinue)
 	{
-		DbgPrint("We don't want to accidently patch something not in the correct module, aborting");
+		DbgLog("We don't want to accidently patch something not in the correct module, aborting");
 		return;
 	}
 
@@ -410,7 +398,7 @@ VOID InitializeBlackOps2Hooks(XEX_EXECUTION_ID* pExecutionId, PLDR_DATA_TABLE_EN
 
 	if (dwVersion != TUv)
 	{
-		DbgPrint("TU != %d", TUv);
+		DbgLog("TU != %d", TUv);
 		if (dwVersion > TUv) HalReturnToFirmware(HalFatalErrorRebootRoutine); // Could maybe send to dash here instead of a reboot
 		return;
 	}
@@ -535,7 +523,6 @@ VOID InitializeGhostsHooks(XEX_EXECUTION_ID* pExecutionId, PLDR_DATA_TABLE_ENTRY
 	}
 }
 
-
 VOID InitializeAWHooks(XEX_EXECUTION_ID* pExecutionId, PLDR_DATA_TABLE_ENTRY ModuleHandle)
 {
 	BOOL ShouldContinue = wcscmp(ModuleHandle->BaseDllName.Buffer, L"default.xex") == 0 || wcscmp(ModuleHandle->BaseDllName.Buffer, L"default_mp.xex") == 0;
@@ -612,7 +599,8 @@ VOID InitializeDestinyHooks(XEX_EXECUTION_ID* pExecutionId, PLDR_DATA_TABLE_ENTR
 VOID InitializeTitleSpecificHooks(PLDR_DATA_TABLE_ENTRY ModuleHandle)
 {
 	XEX_EXECUTION_ID* pExecutionId;
-	if (XamGetExecutionId(&pExecutionId) != S_OK) return;
+	if (XamGetExecutionId(&pExecutionId) != S_OK)
+		return;
 
 	//Challenge.pCurrentExecutionId = pExecutionId;
 	if (pExecutionId->TitleID != 0xFFFE07D1)
@@ -635,36 +623,9 @@ VOID InitializeTitleSpecificHooks(PLDR_DATA_TABLE_ENTRY ModuleHandle)
 
 	dwNumCIV = 0;
 
-	// Reset ordinals
-	//memset((PVOID)ordinals, 0, sizeof(ORDINALS));
-
-#ifdef CUSTOM_HUD
-	//HUD hook for adding menu button (only for retail right now..)
-	if (wcscmp(ModuleHandle->BaseDllName.Buffer, L"hud.xex") == 0 && !CleanMode /*&& !isDevkit*/)
-	{
-		// These are hud specific hooks
-		if (S_OK == PatchModuleImport(ModuleHandle, MODULE_XAM, 855, (DWORD)XuiSceneCreateHook))
-		{
-			DbgPrint("Hooked: 'HUD: XuiSceneCreate'");
-		}
-		if (S_OK == PatchModuleImport(ModuleHandle, MODULE_XAM, 842, (DWORD)XuiRegisterClassHook))
-		{
-			DbgPrint("Hooked: 'HUD: XuiRegisterClass'");
-		}
-		if (S_OK == PatchModuleImport(ModuleHandle, MODULE_XAM, 866, (DWORD)XuiUnregisterClassHook))
-		{
-			DbgPrint("Hooked: 'HUD: XuiUnregisterClass'");
-		}
-	}
-	else
-#endif
-
-#ifdef SPOOF_MS_POINTS
-		if (wcscmp(ModuleHandle->BaseDllName.Buffer, L"Guide.MP.Purchase.xex") == 0) {
-			DbgPrint("Applied MS Points spoof patches");
-			ApplyPatches(NULL, isDevkit ? PATCH_DATA_MPPURCHASE_MSPOINTS_DEVKIT : PATCH_DATA_MPPURCHASE_MSPOINTS_RETAIL);
-		}
-#endif
+	if (wcscmp(ModuleHandle->BaseDllName.Buffer, L"hud.xex") == 0)
+		patchHud(ModuleHandle);
+	
 #ifdef TITLE_HAX
 	switch (pExecutionId->TitleID)
 	{

@@ -4,18 +4,15 @@
 // DOWNSIDE: you can only use a max of 7 int and float args with Detour->CallOriginal
 // if you want to use any amout then do (( < your class type> (*)(...))Detour->SaveStub)( "Your", "Args", "Here" );
 // 
-
 #pragma once
 #include "stdafx.h"
 
 // Values for the class
-BYTE DetourAsm[0x3000] = {0};
-DWORD DetourAsmIndex;
-RTL_CRITICAL_SECTION DetourAsmSection;
+static BYTE DetourAsm[0x3000] = {0};
+static DWORD DetourAsmIndex;
+static RTL_CRITICAL_SECTION DetourAsmSection;
 
-VOID PatchInJump(DWORD* Address, void* Dest, BOOL Linked);
-
-int Int24ToInt32( int Value ) {
+static int Int24ToInt32( int Value ) {
 	Value &= 0x00FFFFFF;
 	if( Value & 0x800000 )
 		Value |= 0xFF000000;
@@ -24,7 +21,7 @@ int Int24ToInt32( int Value ) {
 	return Value;
 }
 
-bool IsZero( PVOID Scr, DWORD Size ) {
+static bool IsZero( PVOID Scr, DWORD Size ) {
 
 	bool result;
 	byte *bZeroData = new byte[Size];
@@ -37,7 +34,7 @@ bool IsZero( PVOID Scr, DWORD Size ) {
 
 // need to call this from the class because all the agrs are pushed up
 // from r3 because it is the class pointer
-void __declspec(naked) SetupCaller()
+static void __declspec(naked) SetupCaller()
 {
 	__asm
 	{
@@ -62,7 +59,7 @@ void __declspec(naked) SetupCaller()
 	}
 }
 
-bool bCheckIfCMP( int ptr )
+static bool bCheckIfCMP( int ptr )
 {
 	byte b = *(byte *)ptr;
 	byte b2 = *(byte *)( ptr + 1 );
@@ -107,7 +104,7 @@ private:
 				// get the branch to address
 				dwTemp = dwTempFuncAddr + Int24ToInt32( *(DWORD *)dwTempFuncAddr );
 				bTemp = ( *(DWORD *)dwTempFuncAddr & 1 ) != 0;
-				PatchInJump( (PDWORD)( dwStubAddress + dwLength ), (PVOID)dwTemp, bTemp );
+				PatchInJump( (PDWORD)( dwStubAddress + dwLength ), dwTemp, bTemp );
 				dwLength += 0x10;
 
 				// if it was a 'b loc_' call, we won't need to anything else to the stub
@@ -141,7 +138,7 @@ branch_else:
 					*(DWORD *)(dwStubAddress + dwLength) = ( ( 0x40000000 + ( *(DWORD *)dwTempFuncAddr & 0x00FF0000 ) + 0x14 ) + 
 																bTemp ? 0 : 0x01000000 );
 					dwLength += 4;
-					PatchInJump( (PDWORD)(dwStubAddress + dwLength), (PVOID)(dwTempFuncAddr + dwTemp), FALSE );
+					PatchInJump( (PDWORD)(dwStubAddress + dwLength), dwTempFuncAddr + dwTemp, FALSE );
 					dwLength += 0x10;
 				}
 			}
@@ -158,12 +155,12 @@ branch_else:
 		}
 
 		// make the stub call the orig function
-		PatchInJump( (PDWORD)(dwStubAddress + dwLength), (PVOID)(dwFunctionAddress + 0x10), FALSE );
+		PatchInJump( (PDWORD)(dwStubAddress + dwLength), dwFunctionAddress + 0x10, FALSE );
 		dwLength += 0x10;
 
 DoHook:
 		// apply the hook
-		PatchInJump( (PDWORD)dwFunctionAddress, pDestFunc, FALSE );
+		PatchInJump( (PDWORD)dwFunctionAddress, (DWORD)pDestFunc, FALSE );
 		return dwLength;
 	}
 
@@ -214,28 +211,3 @@ public:
 		return ((_ClassType(*)(...))SaveStub)( );
 	}
 };
-
-
-VOID PatchInJump(DWORD* Address, void* Dest, BOOL Linked) {
-
-	DWORD Bytes[4];
-	DWORD Destination = (DWORD)Dest;
-
-	Bytes[0] = 0x3D600000 + ((Destination >> 16) & 0xFFFF);// lis 	%r11, dest>>16
-
-	if(Destination & 0x8000) // If bit 16 is 1
-		Bytes[0] += 1;
-
-	Bytes[1] = 0x396B0000 + (Destination & 0xFFFF); // addi	%r11, %r11, dest&0xFFFF
-	Bytes[2] = 0x7D6903A6; // mtctr	%r11
-
-	Bytes[3] = 0x4E800420; // bctr
-
-	if(Linked)
-		Bytes[3] += 1; // bctrl
-
-	memcpy(Address, Bytes, 0x10);
-	__dcbst(0, Address);
-	__sync();
-	__isync();
-}

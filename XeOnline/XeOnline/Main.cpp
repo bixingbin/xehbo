@@ -40,7 +40,7 @@ QWORD __declspec(naked) HvxRunCode(DWORD Key, QWORD Type, QWORD Src, QWORD Dest,
 
 HRESULT FixHVKeys()
 {
-	DbgLog("Reinitializing hypervisor with new keyvault");
+	//DbgLog("Reinitializing hypervisor with new keyvault");
 
 	PBYTE phybuf = (PBYTE)XPhysicalAlloc(0x1000, MAXULONG_PTR, 0, MEM_LARGE_PAGES | PAGE_READWRITE | PAGE_NOCACHE);
 
@@ -52,8 +52,6 @@ HRESULT FixHVKeys()
 
 	ZeroMemory(phybuf, 0x1000);
 	memcpy(phybuf, (isDevkit ? call8EInit_Devkit : call8EINit_Retail), sizeof(call8EINit_Retail));
-
-	DbgLog("pre exec code!");
 
 	if (HvxRunCode(0x72627472, 4, 0xFE00, 0x8000000000000000 | (DWORD)MmGetPhysicalAddress(phybuf), 7) == 0)
 	{
@@ -147,8 +145,7 @@ HRESULT Initialize()
 
 	BYTE currentMacAddress[6];
 	BYTE spoofedMacAddress[6] = {
-		//isDevkit ? (0x00, 0x22, 0x48) : (0x7C, 0xED, 0x8D),
-		0xFF, 0xFF, 0xFF,//0x00, 0x22, 0x48,//0x7C, 0xED, 0x8D,
+		0xFF, 0xFF, 0xFF,
 		keyVault.Data.ConsoleCertificate.ConsoleId.asBits.MacIndex3,
 		keyVault.Data.ConsoleCertificate.ConsoleId.asBits.MacIndex4,
 		keyVault.Data.ConsoleCertificate.ConsoleId.asBits.MacIndex5

@@ -2,7 +2,6 @@
 
 #include <xtl.h>
 #include <fstream>
-#include <xbdm.h>
 #include <xkelib.h>
 #include <xui.h>
 #include <xuiapp.h>
