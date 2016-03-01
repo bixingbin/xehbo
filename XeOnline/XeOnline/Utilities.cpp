@@ -443,13 +443,33 @@ BOOL FileExists(LPCSTR lpFileName)
 	return TRUE;
 }
 
+// Resolve set memory
+pDmSetMemory DevSetMemory = NULL;
+
 HRESULT SetMemory(VOID* Destination, VOID* Source, DWORD Length)
 {
-	if(isDevkit)
-		return DmSetMemory(Destination, Length, Source, NULL);
+	// Try to resolve our function
+	if (DevSetMemory == NULL && isDevkit)
+	{
+		DevSetMemory = (pDmSetMemory)ResolveFunction("xbdm.xex", 40);
+	}
 
-	memcpy(Destination, Source, Length);
-	return S_OK;
+	// Now lets try to set our memory
+	if (DevSetMemory == NULL)
+	{
+		memcpy(Destination, Source, Length);
+		return ERROR_SUCCESS;
+	}
+	else if (isDevkit)
+	{
+		if (DevSetMemory(Destination, Length, Source, NULL) == MAKE_HRESULT(0, 0x2DA, 0))
+		{
+			return ERROR_SUCCESS;
+		}
+	}
+
+	// We have a problem...
+	return E_FAIL;
 }
 
 DWORD ApplyPatches(CHAR* FilePath, const VOID* DefaultPatches)

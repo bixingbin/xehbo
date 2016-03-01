@@ -9,6 +9,8 @@ typedef BOOL(*DLAUNCHSETOPTVALBYNAME)(char* optName, PDWORD val);
 static DLAUNCHGETOPTVALBYNAME dlaunchGetOptValByName = NULL;
 static DLAUNCHSETOPTVALBYNAME dlaunchSetOptValByName = NULL;
 
+typedef HRESULT(*pDmSetMemory)(LPVOID lpbAddr, DWORD cb, LPCVOID lpbBuf, LPDWORD pcbRet);
+
 typedef enum
 {
 	DL_ORDINALS_LDAT = 1,
