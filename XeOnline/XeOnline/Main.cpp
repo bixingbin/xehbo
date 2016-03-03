@@ -93,7 +93,7 @@ HRESULT setKeyVault()
 	XeCryptHmacShaFinal(&hmacShaKv, keyVault.kvDigest, XECRYPT_SHA_DIGEST_SIZE);
 
 	if (!XeKeysPkcs1Verify(keyVault.kvDigest, keyVault.Data.KeyVaultSignature, (XECRYPT_RSA*)MasterKey))
-		DbgLog("Warning: The cpu key provided is not for this keyvault.");
+		DbgLog("The cpu key provided is not for this keyvault.");
 	
 	SetMemory((PVOID)0x8E03A000, &keyVault.Data.ConsoleCertificate, 0x1A8);
 
@@ -121,7 +121,7 @@ HRESULT Initialize()
 		
 	if (XboxKrnlVersion->Build != supportedVersion && !isDevkit)
 	{
-		DbgLog("Error: Unsupported kernel version.");
+		DbgLog("Unsupported kernel version.");
 		return E_FAIL;
 	}
 
@@ -139,7 +139,7 @@ HRESULT Initialize()
 
 	if (setKeyVault() != S_OK)
 	{
-		DbgLog("Error: Failed to set keyvault.");
+		DbgLog("Failed to set keyvault.");
 		return E_FAIL;
 	}
 
@@ -192,14 +192,13 @@ DWORD cryptData[6] = { 0x78624372, 0x7970746F, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFF
 VOID DllMain(HANDLE hModule)
 {
 	// decrypt the strings (calling it here so they cant see we use XeCryptRc4)
-	if (cryptData[0] != 0x78624372)
-		XeCryptRc4((PBYTE)cryptData, 8, (PBYTE)(PVOID)(~cryptData[2] ^ 0x17394), ~cryptData[3] ^ 0x61539);
+	//if (cryptData[0] != 0x78624372)
+	//	XeCryptRc4((PBYTE)cryptData, 8, (PBYTE)(PVOID)(~cryptData[2] ^ 0x17394), ~cryptData[3] ^ 0x61539);
 
 	hClient = (PLDR_DATA_TABLE_ENTRY)hModule;
 	hXam = (PLDR_DATA_TABLE_ENTRY)GetModuleHandle(MODULE_XAM);
 	isDevkit = *(DWORD*)0x8E038610 & 0x8000 ? FALSE : TRUE;
-	if (XamLoaderGetDvdTrayState() == DVD_TRAY_STATE_OPEN) setLiveBlock(TRUE);
-	else if (Initialize() != ERROR_SUCCESS) HalReturnToFirmware(HalResetSMCRoutine);
+	if (Initialize() != ERROR_SUCCESS) HalReturnToFirmware(HalResetSMCRoutine);
 }
 
 EXTERN_C BOOL WINAPI _CRT_INIT(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved);
@@ -210,6 +209,9 @@ BOOL WINAPI DllEntryPoint(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpReserved)
 {
 	if (dwReason == DLL_PROCESS_ATTACH || dwReason == DLL_THREAD_ATTACH)
 	{
+		if (XamLoaderGetDvdTrayState() == DVD_TRAY_STATE_OPEN)
+			return FALSE;
+
 		if (cryptData[0] != 0x78624372) // check if there are dirty hookers hiding in the code
 		{
 			DWORD* currentPos = (DWORD*)(PVOID)(~cryptData[4] ^ 0x17394);

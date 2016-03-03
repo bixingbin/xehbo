@@ -82,7 +82,7 @@ BOOL InitializeHooks()
 	PatchInJump((PDWORD)(isDevkit ? 0x81795664 : 0x816CE284), (DWORD)setupCustomSkin, TRUE);
 
 	XuiPNGTextureLoaderDetour = new Detour<HRESULT>;
-	XuiPNGTextureLoaderDetour->SetupDetour((DWORD)(isDevkit ? 0x819022B0 : 0x817841B0), XuiPNGTextureLoaderHook);
+	XuiPNGTextureLoaderDetour->SetupDetour(isDevkit ? 0x819022B0 : 0x817841B0, XuiPNGTextureLoaderHook);
 
 	// All done
 	return TRUE;

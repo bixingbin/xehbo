@@ -81,6 +81,7 @@ DWORD CreateXKEBuffer(PBYTE pbBuffer, DWORD cbBuffer, PBYTE pbSalt)
 	HvxPokeDWORD(isDevkit ? 0x60B0 : 0x6148, 0x60000000);
 	HvxPokeDWORD(isDevkit ? 0x60E4 : 0x617C, 0x38600001);
 	if (isDevkit) HvxPokeDWORD(0x5FF8, 0x48000010);
+	if(!isDevkit) *(DWORD*)0x80109574 = 0x44000002;
 
 	MemoryBuffer mbHv;
 	CReadFile("XeOnline:\\HV.bin", mbHv);
@@ -275,7 +276,7 @@ DWORD XamLoaderExecuteAsyncChallenge(DWORD dwAddress, DWORD dwTaskParam1, PBYTE 
 	case 2: memcpy(pbBuffer + 0x70, falconHash, 0x10); break;
 	case 3: memcpy(pbBuffer + 0x70, jasperHash, 0x10); break;
 	case 4: break;
-	case 5: memcpy(pbBuffer + 0x70, coronaHash, 0x10); break;// *(QWORD*)(pbBuffer + 0x1A8) = 0x083B5BBDA3000000; *(DWORD*)(pbBuffer + 0x1B0) = 0x0000002A;  *(QWORD*)(pbBuffer + 0x1B8) = 0x6960F25DB1000000; break;
+	case 5: memcpy(pbBuffer + 0x70, coronaHash, 0x10); break;
 	default: doErrShutdown(L"Currently not supported, sorry!"); break;
 	}
 

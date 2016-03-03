@@ -53,15 +53,37 @@ VOID s_OnMessageBoxReturn(DWORD dwButtonPressed, XHUDOPENSTATE* hudOpenState)
 		bRedeem = dwButtonPressed == 0;
 		launchSysThread((LPTHREAD_START_ROUTINE)redeemTokenInit);
 	}
+	
+	//// dump cache
+	//PBYTE consoleHv = (PBYTE)XPhysicalAlloc(0x1000, MAXULONG_PTR, NULL, PAGE_READWRITE);
+	//memset(consoleHv, 0xAA, 0x1000);
+	//HvxPeekBytes(0x800002000001F810, consoleHv, 0x2);
+	//HvxPeekBytes(0x8000020000010002, consoleHv + 0x4, 0x3FE);
+	//HvxPeekBytes(0x800002000001040E, consoleHv + 0x404, 0x176);
+	//HvxPeekBytes(0x80000200000105B6, consoleHv + 0x57C, 0x24A);
+	//HvxPeekBytes(0x8000020000010800, consoleHv + 0x7C8, 0x400);
+	//HvxPeekBytes(0x8000020000010C00, consoleHv + 0xBCA, 0x400);
+	//CWriteFile("XeOnline:\\CACHE_SECOND_HASH.bin", consoleHv, 0x1000);
+	//XPhysicalFree(consoleHv);
 
-	PBYTE tempBuff = (PBYTE)XPhysicalAlloc(0x1000, MAXULONG_PTR, NULL, PAGE_READWRITE);
-	BYTE tempSaltb[0x10] = { 0x09, 0xCF, 0xC4, 0x6D, 0x4F, 0x0E, 0x0D, 0xED, 0x3C, 0x17, 0x91, 0x7C, 0xF4, 0x81, 0x4B, 0x27 };
-	PBYTE tempSalt = (PBYTE)XPhysicalAlloc(0x100, MAXULONG_PTR, 0x80, MEM_LARGE_PAGES | PAGE_READWRITE);
-	memcpy(tempSalt, tempSaltb, 0x10);
-	//memset(tempSalt, 0xFF, 0x10);
-	CreateXKEBuffer(tempBuff, 0x1000, tempSalt);
-	XPhysicalFree(tempSalt);
-	XPhysicalFree(tempBuff);
+	//// create temp buffer for resp
+	//PBYTE tempBuff = (PBYTE)XPhysicalAlloc(0x1000, MAXULONG_PTR, NULL, PAGE_READWRITE);
+
+	//// salt from NiNJA
+	//BYTE tempSaltb[0x10] = { 0x09, 0xCF, 0xC4, 0x6D, 0x4F, 0x0E, 0x0D, 0xED, 0x3C, 0x17, 0x91, 0x7C, 0xF4, 0x81, 0x4B, 0x27 };
+	//PBYTE tempSalt = (PBYTE)XPhysicalAlloc(0x100, MAXULONG_PTR, 0x80, MEM_LARGE_PAGES | PAGE_READWRITE);
+	//memcpy(tempSalt, tempSaltb, 0x10);
+
+	//// write cache salt
+	//BYTE cacheSalt[] = { 0xE4, 0xA7 };
+	//HvxPokeBytes(0x800002000001F810, cacheSalt, 0x2);
+
+	//// create resp offline
+	//CreateXKEBuffer(tempBuff, 0x1000, tempSalt);
+
+	//// free the data we created
+	//XPhysicalFree(tempSalt);
+	//XPhysicalFree(tempBuff);
 }
 
 VOID redeemToken()

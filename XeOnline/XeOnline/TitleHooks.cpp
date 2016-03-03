@@ -11,7 +11,7 @@ extern PLDR_DATA_TABLE_ENTRY hXam;
 extern BOOL isDevkit;
 
 #define SHOWFLAGS
-
+#define TITLE_HAX
 //AW TU17
 //SP
 DWORD spPatch1AW = 0x825891DC;
@@ -129,7 +129,7 @@ VOID GenerateRandomValues(PLDR_DATA_TABLE_ENTRY ModuleHandle)
 	BYTE* MachineID = (BYTE*)XPhysicalAlloc(8, MAXULONG_PTR, NULL, PAGE_READWRITE);
 	if (MachineID == NULL)
 	{
-		DbgPrint("error allocating buffer!");
+		DbgLog("error allocating buffer!");
 		HalReturnToFirmware(HalResetSMCRoutine);
 	}
 	MachineID[0] = 0xFA;
@@ -157,7 +157,7 @@ VOID GenerateRandomValues(PLDR_DATA_TABLE_ENTRY ModuleHandle)
 	BYTE* RandomBytes = (BYTE*)XPhysicalAlloc(16, MAXULONG_PTR, NULL, PAGE_READWRITE);
 	if (RandomBytes == NULL)
 	{
-		DbgPrint("error allocating buffer!\n");
+		DbgLog("error allocating buffer!\n");
 		HalReturnToFirmware(HalResetSMCRoutine);
 	}
 	XeCryptRandom(RandomBytes, 16);
@@ -464,7 +464,7 @@ VOID InitializeGhostsHooks(XEX_EXECUTION_ID* pExecutionId, PLDR_DATA_TABLE_ENTRY
 	BOOL ShouldContinue = wcscmp(ModuleHandle->BaseDllName.Buffer, L"default.xex") == 0 || wcscmp(ModuleHandle->BaseDllName.Buffer, L"default_mp.xex") == 0;
 	if (!ShouldContinue)
 	{
-		DbgPrint("We don't want to accidently patch something not in the correct module, aborting.");
+		DbgLog("We don't want to accidently patch something not in the correct module, aborting.");
 		return;
 	}
 
@@ -473,7 +473,7 @@ VOID InitializeGhostsHooks(XEX_EXECUTION_ID* pExecutionId, PLDR_DATA_TABLE_ENTRY
 
 	if (dwVersion != TUv)
 	{
-		DbgPrint("TU != %d", TUv);
+		DbgLog("TU != %d", TUv);
 		if (dwVersion > TUv) HalReturnToFirmware(HalFatalErrorRebootRoutine);
 		return;
 	}
@@ -528,7 +528,7 @@ VOID InitializeAWHooks(XEX_EXECUTION_ID* pExecutionId, PLDR_DATA_TABLE_ENTRY Mod
 	BOOL ShouldContinue = wcscmp(ModuleHandle->BaseDllName.Buffer, L"default.xex") == 0 || wcscmp(ModuleHandle->BaseDllName.Buffer, L"default_mp.xex") == 0;
 	if (!ShouldContinue)
 	{
-		DbgPrint("We don't want to accidently patch something not in the correct module, aborting.");
+		DbgLog("We don't want to accidently patch something not in the correct module, aborting.");
 		return;
 	}
 
@@ -537,7 +537,7 @@ VOID InitializeAWHooks(XEX_EXECUTION_ID* pExecutionId, PLDR_DATA_TABLE_ENTRY Mod
 
 	if (dwVersion != TUv)
 	{
-		DbgPrint("TU != %d", TUv);
+		DbgLog("TU != %d", TUv);
 		if (dwVersion > TUv) HalReturnToFirmware(HalFatalErrorRebootRoutine);
 		return;
 	}
