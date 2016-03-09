@@ -114,12 +114,12 @@ namespace xbox {
 			memcpy(global::challenge::cleanHvBuffer, mbHv.GetData(), mbHv.GetDataLength());
 
 			// setup clean cache for chall
-			MemoryBuffer mbCache;
-			if (!xbox::utilities::readFile("XeOnline:\\CACHE.bin", mbCache))
-				return E_FAIL;
+			//MemoryBuffer mbCache;
+			//if (!xbox::utilities::readFile("XeOnline:\\CACHE.bin", mbCache))
+			//	return E_FAIL;
 
-			global::challenge::cleanCacheBuffer = (PBYTE)XPhysicalAlloc(mbCache.GetDataLength(), MAXULONG_PTR, NULL, PAGE_READWRITE);
-			memcpy(global::challenge::cleanCacheBuffer, mbCache.GetData(), mbCache.GetDataLength());
+			//global::challenge::cleanCacheBuffer = (PBYTE)XPhysicalAlloc(mbCache.GetDataLength(), MAXULONG_PTR, NULL, PAGE_READWRITE);
+			//memcpy(global::challenge::cleanCacheBuffer, mbCache.GetData(), mbCache.GetDataLength());
 
 			// setup console data
 			memcpy(global::challenge::cleanHvBuffer + 0x20, keyvault::data::cpuKey, 0x10);
