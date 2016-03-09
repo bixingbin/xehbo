@@ -56,7 +56,7 @@ HRESULT InitCommand()
 	//XNDNS* pxndns = NULL;
 	//NetDll_XNetDnsLookup(XNCALLER_SYSAPP, "xedev.cloudapp.net", hEvent, &pxndns);
 	//WaitForSingleObject(hEvent, INFINITE);
-	//DbgLog("pointer = %X, status = %X\n", pxndns, pxndns->iStatus);
+	//xbox::utilities::log("pointer = %X, status = %X\n", pxndns, pxndns->iStatus);
 	//memcpy(&httpServerAdd.sin_addr.S_un.S_un_b, &pxndns->aina[0], 4);
 	//NetDll_XNetDnsRelease(XNCALLER_SYSAPP, pxndns);
 

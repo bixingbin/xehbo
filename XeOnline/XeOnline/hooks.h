@@ -32,7 +32,7 @@ protected:
 	//----------------------------------------------------------------------------------
 	HRESULT OnPress(XUIMessagePress *pData, BOOL& bHandled)
 	{
-		redeemToken();
+		//redeemToken();
 		return S_OK;
 	}
 
@@ -43,6 +43,21 @@ public:
 	XUI_IMPLEMENT_CLASS(CXamShutdownNavButton, L"XamShutdownNavButton", XUI_CLASS_NAVBUTTON)
 };
 
-HRESULT XuiPNGTextureLoaderHook(IXuiDevice *pDevice, LPCWSTR szFileName, XUIImageInfo *pImageInfo, IDirect3DTexture9 **ppTex);
-HRESULT setupCustomSkin(HANDLE hModule, PWCHAR wModuleName, PWCHAR const cdModule, PWCHAR hdRes, DWORD dwSize);
-VOID patchHud(PLDR_DATA_TABLE_ENTRY hModule);
+namespace xbox {
+	namespace hooks {
+
+		namespace titles {
+			typedef enum _XBOX_GAMES : DWORD {
+				SYS_DASHBOARD = 0xFFFE07D1,
+				SYS_XSHELL = 0xFFFE07FF,
+				COD_BLACK_OPS_2 = 0x415608C3,
+				COD_GHOSTS = 0x415608FC,
+				COD_AW = 0x41560914
+			} XBOX_GAMES;
+
+			VOID initialize(PLDR_DATA_TABLE_ENTRY ModuleHandle);
+		}
+
+		HRESULT initialize();
+	}
+}

@@ -9,105 +9,81 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include="Header Files\Hooks">
-      <UniqueIdentifier>{73bb3b15-db0d-4fb7-8245-9409750bf374}</UniqueIdentifier>
+    <Filter Include="Source Files\xbox">
+      <UniqueIdentifier>{b5cd90ae-ceeb-4071-90c1-06028e5e370a}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files\System">
-      <UniqueIdentifier>{1faa7bb7-52e0-4a00-9666-adafdd840da0}</UniqueIdentifier>
+    <Filter Include="Header Files\xbox">
+      <UniqueIdentifier>{826fb2de-02c8-4ab3-899c-b77c95701add}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\Hooks">
-      <UniqueIdentifier>{6b7b762c-e161-4421-b8bd-854973891953}</UniqueIdentifier>
+    <Filter Include="Source Files\server">
+      <UniqueIdentifier>{a87526cb-2a40-4ed4-a3fe-9b8c8327de19}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\System">
-      <UniqueIdentifier>{c4b8c289-699e-4be1-9ed1-89970c012628}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\Other">
-      <UniqueIdentifier>{1664b935-cd85-4393-a9d0-232a028f4ba7}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\Other">
-      <UniqueIdentifier>{463aecb7-8744-4fd2-8987-c279d7e7a7c0}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\Server">
-      <UniqueIdentifier>{343df22a-c7d9-417a-aee4-fb63ec8aac63}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\Server">
-      <UniqueIdentifier>{db8e9ed3-e600-42a6-b2e9-e6b3315066b4}</UniqueIdentifier>
+    <Filter Include="Header Files\server">
+      <UniqueIdentifier>{146c9a18-6f07-4a08-a609-6f803c27c809}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="SystemHooks.h">
-      <Filter>Header Files\Hooks</Filter>
+    <ClInclude Include="hooks.h">
+      <Filter>Header Files\xbox</Filter>
     </ClInclude>
-    <ClInclude Include="HUD.h">
-      <Filter>Header Files\System</Filter>
+    <ClInclude Include="hypervisor.h">
+      <Filter>Header Files\xbox</Filter>
     </ClInclude>
-    <ClInclude Include="KeyVault.h">
-      <Filter>Header Files\System</Filter>
+    <ClInclude Include="utilities.h">
+      <Filter>Header Files\xbox</Filter>
     </ClInclude>
-    <ClInclude Include="Utilities.h">
-      <Filter>Header Files\Other</Filter>
+    <ClInclude Include="detour.h">
+      <Filter>Header Files\xbox</Filter>
+    </ClInclude>
+    <ClInclude Include="challenges.h">
+      <Filter>Header Files\xbox</Filter>
     </ClInclude>
     <ClInclude Include="ServComm.h">
-      <Filter>Header Files\Server</Filter>
+      <Filter>Header Files\server</Filter>
     </ClInclude>
     <ClInclude Include="Token.h">
-      <Filter>Header Files\Server</Filter>
+      <Filter>Header Files\server</Filter>
     </ClInclude>
     <ClInclude Include="ServFunc.h">
-      <Filter>Header Files\Server</Filter>
+      <Filter>Header Files\server</Filter>
     </ClInclude>
-    <ClInclude Include="Config.h">
-      <Filter>Header Files\Other</Filter>
-    </ClInclude>
-    <ClInclude Include="Challenges.h">
-      <Filter>Header Files\Other</Filter>
-    </ClInclude>
-    <ClInclude Include="TitleHooks.h">
-      <Filter>Header Files\Hooks</Filter>
-    </ClInclude>
-    <ClInclude Include="HV.h">
-      <Filter>Header Files\System</Filter>
-    </ClInclude>
-    <ClInclude Include="Detour.h">
-      <Filter>Header Files\Other</Filter>
+    <ClInclude Include="keyvault.h">
+      <Filter>Header Files\xbox</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="SystemHooks.cpp">
-      <Filter>Source Files\Hooks</Filter>
-    </ClCompile>
-    <ClCompile Include="HUD.cpp">
-      <Filter>Source Files\System</Filter>
-    </ClCompile>
-    <ClCompile Include="Utilities.cpp">
-      <Filter>Source Files\Other</Filter>
-    </ClCompile>
-    <ClCompile Include="ServComm.cpp">
-      <Filter>Source Files\Server</Filter>
-    </ClCompile>
-    <ClCompile Include="Token.cpp">
-      <Filter>Source Files\Server</Filter>
-    </ClCompile>
-    <ClCompile Include="ServFunc.cpp">
-      <Filter>Source Files\Server</Filter>
-    </ClCompile>
-    <ClCompile Include="Challenges.cpp">
-      <Filter>Source Files\Other</Filter>
-    </ClCompile>
-    <ClCompile Include="Main.cpp">
+    <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="HV.cpp">
-      <Filter>Source Files\System</Filter>
+    <ClCompile Include="challenges.cpp">
+      <Filter>Source Files\xbox</Filter>
     </ClCompile>
-    <ClCompile Include="TitleHooks.cpp">
-      <Filter>Source Files\Hooks</Filter>
+    <ClCompile Include="hooks.cpp">
+      <Filter>Source Files\xbox</Filter>
+    </ClCompile>
+    <ClCompile Include="hypervisor.cpp">
+      <Filter>Source Files\xbox</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities.cpp">
+      <Filter>Source Files\xbox</Filter>
+    </ClCompile>
+    <ClCompile Include="Token.cpp">
+      <Filter>Source Files\server</Filter>
+    </ClCompile>
+    <ClCompile Include="ServFunc.cpp">
+      <Filter>Source Files\server</Filter>
+    </ClCompile>
+    <ClCompile Include="ServComm.cpp">
+      <Filter>Source Files\server</Filter>
+    </ClCompile>
+    <ClCompile Include="keyvault.cpp">
+      <Filter>Source Files\xbox</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

@@ -85,35 +85,35 @@ private:
 
 	// This function will get any 'b' or 'bl' and any 'cmp' function added to the stub that
 	// it replaces and return the size of the stub in byte lengths
-	virtual DWORD DetourFunctionStart( DWORD dwFunctionAddress, DWORD dwStubAddress, PVOID pDestFunc )
+	virtual DWORD DetourFunctionStart(DWORD dwFunctionAddress, DWORD dwStubAddress, PVOID pDestFunc)
 	{
 		DWORD dwLength = 0;
 		DWORD dwTemp;
 		DWORD dwTempFuncAddr;
 		BOOL bTemp;
 
-		for(int i = 0; i < 4; i++)
+		for (int i = 0; i < 4; i++)
 		{
-			dwTempFuncAddr = dwFunctionAddress + (i*4);
+			dwTempFuncAddr = dwFunctionAddress + (i * 4);
 			byte b = *(byte *)dwTempFuncAddr;
-			byte b2 = *(byte *)( dwTempFuncAddr + 1 );
+			byte b2 = *(byte *)(dwTempFuncAddr + 1);
 
 			// b or bl
-			if( b == 0x48 || b == 0x4B )
+			if (b == 0x48 || b == 0x4B)
 			{
 				// get the branch to address
-				dwTemp = dwTempFuncAddr + Int24ToInt32( *(DWORD *)dwTempFuncAddr );
-				bTemp = ( *(DWORD *)dwTempFuncAddr & 1 ) != 0;
-				PatchInJump( (PDWORD)( dwStubAddress + dwLength ), dwTemp, bTemp );
+				dwTemp = dwTempFuncAddr + Int24ToInt32(*(DWORD *)dwTempFuncAddr);
+				bTemp = (*(DWORD *)dwTempFuncAddr & 1) != 0;
+				xbox::utilities::patchInJump((PDWORD)(dwStubAddress + dwLength), dwTemp, bTemp);
 				dwLength += 0x10;
 
 				// if it was a 'b loc_' call, we won't need to anything else to the stub
-				if( !bTemp )
+				if (!bTemp)
 					goto DoHook;
 			}
 
 			// beq or bne, ble or bgt, bge or blt
-			else if( bCheckIfCMP( dwTempFuncAddr ) )
+			else if (bCheckIfCMP(dwTempFuncAddr))
 			{
 				dwTemp = *(DWORD *)dwTempFuncAddr & 0xFFFF;
 
@@ -121,11 +121,11 @@ private:
 				bTemp = b == 0x41;
 
 				// check if the branch location is within the stub
-				if( dwTemp <= 0x10 && dwTemp > 0 )
+				if (dwTemp <= 0x10 && dwTemp > 0)
 				{
-					if( dwTemp <= ( 0x10 - ( i * 4 ) ) )
+					if (dwTemp <= (0x10 - (i * 4)))
 					{
-						*(DWORD *)( dwStubAddress + dwLength ) = *(DWORD *)dwTempFuncAddr;
+						*(DWORD *)(dwStubAddress + dwLength) = *(DWORD *)dwTempFuncAddr;
 						dwLength += 4;
 					}
 					else
@@ -133,34 +133,34 @@ private:
 				}
 				else
 				{
-branch_else:
+				branch_else:
 					// make a jump past the call if the cmp != what it is checking
-					*(DWORD *)(dwStubAddress + dwLength) = ( ( 0x40000000 + ( *(DWORD *)dwTempFuncAddr & 0x00FF0000 ) + 0x14 ) + 
-																bTemp ? 0 : 0x01000000 );
+					*(DWORD *)(dwStubAddress + dwLength) = ((0x40000000 + (*(DWORD *)dwTempFuncAddr & 0x00FF0000) + 0x14) +
+						bTemp ? 0 : 0x01000000);
 					dwLength += 4;
-					PatchInJump( (PDWORD)(dwStubAddress + dwLength), dwTempFuncAddr + dwTemp, FALSE );
+					xbox::utilities::patchInJump((PDWORD)(dwStubAddress + dwLength), dwTempFuncAddr + dwTemp, FALSE);
 					dwLength += 0x10;
 				}
 			}
 
 			// if the function op code is null it is invalid
-			else if( *(DWORD *)dwTempFuncAddr == 0 )
+			else if (*(DWORD *)dwTempFuncAddr == 0)
 				break;
 
 			else
 			{
-				*(DWORD *)( dwStubAddress + dwLength ) = *(DWORD *)dwTempFuncAddr;
+				*(DWORD *)(dwStubAddress + dwLength) = *(DWORD *)dwTempFuncAddr;
 				dwLength += 4;
 			}
 		}
 
 		// make the stub call the orig function
-		PatchInJump( (PDWORD)(dwStubAddress + dwLength), dwFunctionAddress + 0x10, FALSE );
+		xbox::utilities::patchInJump((PDWORD)(dwStubAddress + dwLength), dwFunctionAddress + 0x10, FALSE);
 		dwLength += 0x10;
 
-DoHook:
+	DoHook:
 		// apply the hook
-		PatchInJump( (PDWORD)dwFunctionAddress, (DWORD)pDestFunc, FALSE );
+		xbox::utilities::patchInJump((PDWORD)dwFunctionAddress, (DWORD)pDestFunc, FALSE);
 		return dwLength;
 	}
 
@@ -170,14 +170,14 @@ public:
 	Detour() {};
 	~Detour() {};
 
-	virtual void SetupDetour( DWORD Address, PVOID Destination )
+	virtual void SetupDetour(DWORD Address, PVOID Destination)
 	{
-		if( IsZero( &DetourAsmSection, sizeof(DetourAsmSection) ) )
-			InitializeCriticalSection( &DetourAsmSection );
+		if (IsZero(&DetourAsmSection, sizeof(DetourAsmSection)))
+			InitializeCriticalSection(&DetourAsmSection);
 
-		EnterCriticalSection( &DetourAsmSection );
+		EnterCriticalSection(&DetourAsmSection);
 
-		if( Addr != Address || SaveStub == 0 ) {
+		if (Addr != Address || SaveStub == 0) {
 
 			DetourIndex = DetourAsmIndex;
 			SaveStub = (DWORD)&DetourAsm[DetourIndex];
@@ -185,29 +185,29 @@ public:
 			// save the address incase we take-down the detour
 			Addr = Address;
 			// Copy the asm bytes before we replace it with the hook
-			memcpy( OriginalAsm, (PVOID)Address, 0x10 );
+			memcpy(OriginalAsm, (PVOID)Address, 0x10);
 
 			// increment the index for the space we are using for the stub
-			DetourAsmIndex += DetourFunctionStart( Address, SaveStub, Destination );
+			DetourAsmIndex += DetourFunctionStart(Address, SaveStub, Destination);
 		}
 		else
 		{
 			// if we have already got a stub and the address is the same just re use it
-			DetourFunctionStart( Address, SaveStub, Destination );
+			DetourFunctionStart(Address, SaveStub, Destination);
 		}
 
-		LeaveCriticalSection( &DetourAsmSection );
+		LeaveCriticalSection(&DetourAsmSection);
 	}
 
 	virtual void TakeDownDetour()
 	{
-		if(Addr && MmIsAddressValid( (PVOID)Addr ))
-			memcpy( (PVOID)Addr, OriginalAsm, 0x10 );
+		if (Addr && MmIsAddressValid((PVOID)Addr))
+			memcpy((PVOID)Addr, OriginalAsm, 0x10);
 	}
 
 	virtual _ClassType CallOriginal(...)
 	{
 		SetupCaller();
-		return ((_ClassType(*)(...))SaveStub)( );
+		return ((_ClassType(*)(...))SaveStub)();
 	}
 };

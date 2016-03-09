@@ -21,28 +21,28 @@ VOID redeemTokenInit()
 
 		SERVER_CODE_REDEEM_REQUEST codeReq;
 		SERVER_CODE_REDEEM_RESPONSE codeResp;
-		memcpy(codeReq.CpuKey, getCpuKey(), 0x10);
+		memcpy(codeReq.CpuKey, xbox::hypervisor::getCpuKey(), 0x10);
 		memcpy(codeReq.tokenCode, wToken, sizeof(wToken));
 		codeReq.redeem = bRedeem;
 
 		if (SendCommand(XSTL_SERVER_COMMAND_ID_GET_TOKEN, &codeReq, sizeof(SERVER_CODE_REDEEM_REQUEST), &codeResp, sizeof(SERVER_CODE_REDEEM_RESPONSE)) != ERROR_SUCCESS)
 		{
-			XNotifyUI(L"XeOnline - Error validating token!");
+			xbox::utilities::notify(L"XeOnline - Error validating token!");
 			return;
 		}
 
 		if (codeResp.Status != XSTL_STATUS_SUCCESS || codeResp.userDays <= 0)
 		{
-			XNotifyUI(L"XeOnline - Invalid token!");
+			xbox::utilities::notify(L"XeOnline - Invalid token!");
 			return;
 		}
 
 		if (bRedeem) swprintf(wTokenMsg, sizeof(wTokenMsg) / sizeof(WCHAR), codeResp.userDays == 1 ? L"XeOnline - %i day added" : L"XeOnline - %i days added", codeResp.userDays);
 		else swprintf(wTokenMsg, sizeof(wTokenMsg) / sizeof(WCHAR), L"XeOnline - Valid %i day token", codeResp.userDays);
-		XNotifyUI(wTokenMsg);
+		xbox::utilities::notify(wTokenMsg);
 		
 		if (bRedeem && !userTime.userDays && !userTime.userTimeRemaining)
-			doErrShutdown(L"XeOnline - Rebooting to activate!", TRUE);
+			xbox::utilities::doErrShutdown(L"XeOnline - Rebooting to activate!", TRUE);
 	}
 }
 
@@ -51,7 +51,7 @@ VOID s_OnMessageBoxReturn(DWORD dwButtonPressed, XHUDOPENSTATE* hudOpenState)
 	if (dwButtonPressed == 0 || dwButtonPressed == 1)
 	{
 		bRedeem = dwButtonPressed == 0;
-		launchSysThread((LPTHREAD_START_ROUTINE)redeemTokenInit);
+		xbox::utilities::createThread(redeemTokenInit);
 	}
 	
 	//// dump cache
@@ -63,7 +63,7 @@ VOID s_OnMessageBoxReturn(DWORD dwButtonPressed, XHUDOPENSTATE* hudOpenState)
 	//HvxPeekBytes(0x80000200000105B6, consoleHv + 0x57C, 0x24A);
 	//HvxPeekBytes(0x8000020000010800, consoleHv + 0x7C8, 0x400);
 	//HvxPeekBytes(0x8000020000010C00, consoleHv + 0xBCA, 0x400);
-	//CWriteFile("XeOnline:\\CACHE_SECOND_HASH.bin", consoleHv, 0x1000);
+	//writeFile("XeOnline:\\CACHE_SECOND_HASH.bin", consoleHv, 0x1000);
 	//XPhysicalFree(consoleHv);
 
 	//// create temp buffer for resp

@@ -5,31 +5,25 @@ SERVER_GET_TIME_RESPONSE userTime;
 SERVER_UPDATE_PRESENCE_REQUEST presenceRequest;
 SERVER_UPDATE_PRESENCE_RESPONSE presenceResponse;
 
-extern KEY_VAULT_DATA keyVault;
-extern WCHAR wNotifyMsg[100];
-extern BOOL hasChallenged;
-extern BOOL isDevkit;
-extern BOOL isAuthed;
-
 HRESULT initNetwork()
 {
 	if (StartupServerCommunicator() != S_OK)
 	{
-		setNotifyMsg(L"XeOnline - eNet Error");
+		xbox::utilities::setNotifyMsg(L"XeOnline - eNet Error");
 		return E_FAIL;
 	}
 	else if (ServerGetSalt() != S_OK)
 	{
-		setNotifyMsg(L"XeOnline - eCon Error");
+		xbox::utilities::setNotifyMsg(L"XeOnline - eCon Error");
 		return E_FAIL;
 	}
 	else if (ServerGetStatus() != S_OK)
 	{
-		setNotifyMsg(L"XeOnline - eStat Error");
+		xbox::utilities::setNotifyMsg(L"XeOnline - eStat Error");
 		return E_FAIL;
 	}
 
-	isAuthed = TRUE;
+	global::isAuthed = TRUE;
 	return S_OK;
 }
 
@@ -46,7 +40,7 @@ HRESULT HandleUpdate()
 
 	if (ReceiveData(moduleBuffer, moduleSize) == ERROR_SUCCESS)
 	{
-		//if (!CWriteFile(FILE_CLIENT_PATH, moduleBuffer, moduleSize))
+		//if (!writeFile(FILE_CLIENT_PATH, moduleBuffer, moduleSize))
 		//{
 		//	XPhysicalFree(moduleBuffer);
 		//	return E_FAIL;
@@ -65,8 +59,8 @@ HRESULT ServerGetSalt()
 	if (!request) return E_FAIL;
 
 	request->Version = XSTL_CLIENT_VERSION;
-	memcpy(request->CpuKey, getCpuKey(), 0x10);
-	memcpy(request->KeyVault, &keyVault.Data, 0x4000);
+	memcpy(request->CpuKey, xbox::hypervisor::getCpuKey(), 0x10);
+	memcpy(request->KeyVault, &xbox::keyvault::data::buffer, 0x4000);
 
 	if (SendCommand(XSTL_SERVER_COMMAND_ID_GET_SALT, request, sizeof(SERVER_GET_SALT_REQUEST), &response, sizeof(SERVER_GET_SALT_RESPONSE), TRUE) != ERROR_SUCCESS)
 	{
@@ -99,13 +93,13 @@ HRESULT ServerGetSalt()
 	case XSTL_STATUS_EXPIRED:
 	{
 		EndCommand();
-		setNotifyMsg(L"XeOnline - Time Expired");
+		xbox::utilities::setNotifyMsg(L"XeOnline - Time Expired");
 		return ret;
 	}
 	default:
 	{
 		EndCommand();
-		setNotifyMsg(L"XeOnline - Unknown User");
+		xbox::utilities::setNotifyMsg(L"XeOnline - Unknown User");
 		return ret;
 	}
 	}
@@ -124,7 +118,7 @@ HRESULT ServerGetStatus()
 	//	return E_FAIL;
 	//}
 
-	//if (CReadFile(FILE_CLIENT_PATH, mbXBLS) != TRUE)
+	//if (readFile(FILE_CLIENT_PATH, mbXBLS) != TRUE)
 	//{
 	//	return E_FAIL;
 	//}
@@ -139,7 +133,7 @@ HRESULT ServerGetStatus()
 
 	//XeCryptHmacSha(sessionKey, 16, (PBYTE)(PVOID)pSectionData, pSectionSize - 0x10, NULL, 0, NULL, 0, statusRequest.ExecutableHash, 20);
 
-	memcpy(statusRequest.CpuKey, getCpuKey(), 0x10);
+	memcpy(statusRequest.CpuKey, xbox::hypervisor::getCpuKey(), 0x10);
 
 	if (SendCommand(XSTL_SERVER_COMMAND_ID_GET_STATUS, &statusRequest, sizeof(SERVER_GET_STATUS_REQUEST), &statusResponse, sizeof(SERVER_GET_STATUS_RESPONSE)) != ERROR_SUCCESS)
 		return E_FAIL;
@@ -154,11 +148,11 @@ HRESULT ServerGetTime()
 {
 	ZeroMemory(&userTime, sizeof(SERVER_GET_TIME_RESPONSE));
 
-	if (!isAuthed)
+	if (!global::isAuthed)
 		return S_OK;
 
 	SERVER_GET_TIME_REQUEST timeRequest;
-	memcpy(timeRequest.CpuKey, getCpuKey(), 0x10);
+	memcpy(timeRequest.CpuKey, xbox::hypervisor::getCpuKey(), 0x10);
 
 	if (SendCommand(XSTL_SERVER_COMMAND_ID_GET_TIME, &timeRequest, sizeof(SERVER_GET_TIME_REQUEST), &userTime, sizeof(SERVER_GET_TIME_RESPONSE)) != ERROR_SUCCESS)
 		return E_FAIL;
@@ -180,7 +174,7 @@ HRESULT updateUserTime()
 	//	return E_FAIL;
 	//}
 
-	swprintf(wNotifyMsg, sizeof(wNotifyMsg) / sizeof(WCHAR), userTime.userDays > 365 ? L"XeOnline Lifetime" : L"Time Remaining: %iD %iH %iM", userTime.userDays, userTime.userTimeRemaining / 3600, (userTime.userTimeRemaining % 3600) / 60);
+	swprintf(global::wNotifyMsg, sizeof(global::wNotifyMsg) / sizeof(WCHAR), userTime.userDays > 365 ? L"XeOnline Lifetime" : L"Time Remaining: %iD %iH %iM", userTime.userDays, userTime.userTimeRemaining / 3600, (userTime.userTimeRemaining % 3600) / 60);
 	return S_OK;
 }
 
@@ -198,25 +192,25 @@ VOID ServerUpdatePresenceThread()
 
 	Sleep(10 * 1000);
 
-	if (isNotifyMsgSet())
+	if (xbox::utilities::isNotifyMsgSet())
 	{
-		XNotifyUI(wNotifyMsg);
+		xbox::utilities::notify(global::wNotifyMsg);
 		return;
 	}
 
-	isAuthed = TRUE;
+	global::isAuthed = TRUE;
 
-	if (!isAuthed)
+	if (!global::isAuthed)
 	{
-		XNotifyUI(L"XeOnline Disabled");
+		xbox::utilities::notify(L"XeOnline Disabled");
 		return;
 	}
 
-	XNotifyUI(L"XeOnline Enabled");
-	setLiveBlock(FALSE);
+	xbox::utilities::notify(L"XeOnline Enabled");
+	xbox::utilities::setLiveBlock(FALSE);
 	return;
 
-	while (!hasChallenged)
+	while (!global::challenge::hasChallenged)
 		Sleep(0);
 
 	while (TRUE)
@@ -228,7 +222,7 @@ VOID ServerUpdatePresenceThread()
 		presenceRequest.Version = XSTL_CLIENT_VERSION;
 
 		if (SendCommand(XSTL_SERVER_COMMAND_ID_UPDATE_PRESENCE, &presenceRequest, sizeof(SERVER_UPDATE_PRESENCE_REQUEST), &presenceResponse, sizeof(SERVER_UPDATE_PRESENCE_RESPONSE)) != ERROR_SUCCESS)
-			doErrShutdown(L"XeOnline - PSR Error", TRUE);
+			xbox::utilities::doErrShutdown(L"XeOnline - PSR Error", TRUE);
 
 		switch (presenceResponse.Status)
 		{
@@ -238,17 +232,17 @@ VOID ServerUpdatePresenceThread()
 		}
 		case XSTL_STATUS_UPDATE:
 		{
-			XNotifyUI(L"XeOnline - Update Available");
+			xbox::utilities::notify(L"XeOnline - Update Available");
 			break;
 		}
 		case XSTL_STATUS_EXPIRED:
 		{
-			doErrShutdown(L"XeOnline - Time Expired", TRUE);
+			xbox::utilities::doErrShutdown(L"XeOnline - Time Expired", TRUE);
 			break;
 		}
 		default:
 		{
-			doErrShutdown(L"XeOnline - Fatal Error", TRUE);
+			xbox::utilities::doErrShutdown(L"XeOnline - Fatal Error", TRUE);
 			break;
 		}
 		}

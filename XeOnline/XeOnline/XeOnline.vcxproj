@@ -40,13 +40,13 @@
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <ExceptionHandling>false</ExceptionHandling>
       <BufferSecurityCheck>false</BufferSecurityCheck>
-      <PrecompiledHeaderOutputFile>$(OutDir)$(ProjectName).pch</PrecompiledHeaderOutputFile>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <PreprocessorDefinitions>NDEBUG;_XBOX;LTCG</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\xkelib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <MinimalRebuild>false</MinimalRebuild>
+      <ObjectFileName>$(IntDir)/%(RelativeDir)</ObjectFileName>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -55,46 +55,43 @@
       <AdditionalLibraryDirectories>..\xkelib</AdditionalLibraryDirectories>
       <AdditionalDependencies>xapilib.lib;d3d9ltcg.lib;d3dx9.lib;xgraphics.lib;xboxkrnl.lib;xnet.lib;xaudio2.lib;xact3ltcg.lib;x3daudioltcg.lib;xmcoreltcg.lib;vcomp.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <EntryPointSymbol>DllEntryPoint</EntryPointSymbol>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <ImageXex>
       <ConfigurationFile>config.xml</ConfigurationFile>
       <RequireFullExperience>false</RequireFullExperience>
-      <ExportByName>false</ExportByName>
     </ImageXex>
     <Deploy />
     <PostBuildEvent />
     <ProjectReference />
+    <Deploy>
+      <DeploymentType>EmulateDvd</DeploymentType>
+    </Deploy>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="Detour.h" />
-    <ClInclude Include="HUD.h" />
-    <ClInclude Include="HV.h" />
-    <ClInclude Include="KeyVault.h" />
+    <ClInclude Include="challenges.h" />
+    <ClInclude Include="detour.h" />
+    <ClInclude Include="hooks.h" />
+    <ClInclude Include="hypervisor.h" />
+    <ClInclude Include="keyvault.h" />
     <ClInclude Include="ServComm.h" />
     <ClInclude Include="ServFunc.h" />
     <ClInclude Include="stdafx.h" />
-    <ClInclude Include="SystemHooks.h" />
-    <ClInclude Include="TitleHooks.h" />
     <ClInclude Include="Token.h" />
-    <ClInclude Include="Utilities.h" />
-    <ClInclude Include="Config.h" />
-    <ClInclude Include="Challenges.h" />
+    <ClInclude Include="utilities.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="HUD.cpp" />
-    <ClCompile Include="HV.cpp" />
+    <ClCompile Include="challenges.cpp" />
+    <ClCompile Include="hooks.cpp" />
+    <ClCompile Include="hypervisor.cpp" />
+    <ClCompile Include="keyvault.cpp" />
     <ClCompile Include="ServComm.cpp" />
     <ClCompile Include="ServFunc.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release Retail|Xbox 360'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="SystemHooks.cpp" />
+    <ClCompile Include="main.cpp" />
     <ClCompile Include="Token.cpp" />
-    <ClCompile Include="TitleHooks.cpp" />
-    <ClCompile Include="Utilities.cpp" />
-    <ClCompile Include="Main.cpp" />
-    <ClCompile Include="Challenges.cpp" />
+    <ClCompile Include="utilities.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="config.xml">
