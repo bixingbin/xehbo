@@ -30,7 +30,7 @@ namespace xbox {
 
 				if (wcscmp(szScenePath, L"GuideMain.xur") == 0)
 				{
-					updateUserTime();
+					server::main::updateUserTime();
 
 					// Set header text
 					HXUIOBJ headerLabel;
@@ -468,6 +468,7 @@ namespace xbox {
 
 				if (pExecutionId->TitleID == COD_BLACK_OPS_2)
 				{
+					//XamLoaderRebootToDash()
 					if (dwVersion != 18)
 						HalReturnToFirmware(HalFatalErrorRebootRoutine);
 

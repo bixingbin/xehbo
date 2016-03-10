@@ -19,6 +19,8 @@
 #define XSTL_STATUS_EXPIRED   0x30000000
 #define XSTL_STATUS_ERROR     0x40000000
 
+#define SEND_RECV_SIZE 2048
+
 // Structures
 #pragma pack(1)
 typedef struct _SERVER_GET_SALT_REQUEST {
@@ -96,9 +98,12 @@ typedef struct _SERVER_CODE_REDEEM_RESPONSE {
 } SERVER_CODE_REDEEM_RESPONSE, *PSERVER_CODE_REDEEM_RESPONSE;
 #pragma pack()
 
-// Methods
-HRESULT StartupServerCommunicator();
-HRESULT SendCommand(DWORD CommandId, VOID* CommandData, DWORD CommandLength, VOID* Responce, DWORD ResponceLength, BOOL KeepOpen = FALSE, BOOL NoReceive=FALSE);
-HRESULT ReceiveData(VOID* Buffer, DWORD BytesExpected);
-HRESULT InitCommand();
-VOID EndCommand();
+namespace server {
+	namespace main {
+		HRESULT updateUserTime();
+		VOID initialize();
+	}
+	namespace token {
+		VOID initialize();
+	}
+}

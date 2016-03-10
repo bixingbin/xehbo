@@ -6,16 +6,13 @@
 #include <xui.h>
 #include <xuiapp.h>
 
+#include "server.h"
 #include "utilities.h"
 #include "hypervisor.h"
 #include "keyvault.h"
 #include "detour.h"
 #include "hooks.h"
 #include "challenges.h"
-
-#include "ServComm.h"
-#include "ServFunc.h"
-#include "Token.h"
 
 using namespace std;
 

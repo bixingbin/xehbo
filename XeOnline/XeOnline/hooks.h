@@ -32,7 +32,7 @@ protected:
 	//----------------------------------------------------------------------------------
 	HRESULT OnPress(XUIMessagePress *pData, BOOL& bHandled)
 	{
-		//redeemToken();
+		server::token::initialize();
 		return S_OK;
 	}
 

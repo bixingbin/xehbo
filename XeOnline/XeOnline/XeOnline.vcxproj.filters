@@ -15,12 +15,6 @@
     <Filter Include="Header Files\xbox">
       <UniqueIdentifier>{826fb2de-02c8-4ab3-899c-b77c95701add}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\server">
-      <UniqueIdentifier>{a87526cb-2a40-4ed4-a3fe-9b8c8327de19}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\server">
-      <UniqueIdentifier>{146c9a18-6f07-4a08-a609-6f803c27c809}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
@@ -41,17 +35,11 @@
     <ClInclude Include="challenges.h">
       <Filter>Header Files\xbox</Filter>
     </ClInclude>
-    <ClInclude Include="ServComm.h">
-      <Filter>Header Files\server</Filter>
-    </ClInclude>
-    <ClInclude Include="Token.h">
-      <Filter>Header Files\server</Filter>
-    </ClInclude>
-    <ClInclude Include="ServFunc.h">
-      <Filter>Header Files\server</Filter>
-    </ClInclude>
     <ClInclude Include="keyvault.h">
       <Filter>Header Files\xbox</Filter>
+    </ClInclude>
+    <ClInclude Include="server.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -73,17 +61,11 @@
     <ClCompile Include="utilities.cpp">
       <Filter>Source Files\xbox</Filter>
     </ClCompile>
-    <ClCompile Include="Token.cpp">
-      <Filter>Source Files\server</Filter>
-    </ClCompile>
-    <ClCompile Include="ServFunc.cpp">
-      <Filter>Source Files\server</Filter>
-    </ClCompile>
-    <ClCompile Include="ServComm.cpp">
-      <Filter>Source Files\server</Filter>
-    </ClCompile>
     <ClCompile Include="keyvault.cpp">
       <Filter>Source Files\xbox</Filter>
+    </ClCompile>
+    <ClCompile Include="server.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
