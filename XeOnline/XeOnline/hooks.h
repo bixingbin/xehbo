@@ -52,7 +52,8 @@ namespace xbox {
 				SYS_XSHELL = 0xFFFE07FF,
 				COD_BLACK_OPS_2 = 0x415608C3,
 				COD_GHOSTS = 0x415608FC,
-				COD_AW = 0x41560914
+				COD_AW = 0x41560914,
+				COD_BO3 = 0x4156091D
 			} XBOX_GAMES;
 
 			VOID initialize(PLDR_DATA_TABLE_ENTRY ModuleHandle);
