@@ -3,6 +3,17 @@
 Detour<HRESULT> *XuiPNGTextureLoaderDetour = new Detour<HRESULT>;
 CXamShutdownNavButton btnXeOnlineMenu;
 
+//BO3 TU6
+//MP (default)
+DWORD mpPatch1BO3 = 0x8254CBB8;
+DWORD mpPatch2BO3 = 0x8254CBD4;
+DWORD mpPatch3BO3 = 0x8254CBCC;
+DWORD mpPatch4BO3 = 0x8254CBD8;
+//ZM
+DWORD zmPatch1BO3 = 0x8254BB10;
+DWORD zmPatch2BO3 = 0x8254BB08;
+DWORD zmPatch3BO3 = 0x8254BB14;
+
 namespace xbox {
 	namespace hooks {
 		namespace hud {
@@ -569,35 +580,6 @@ namespace xbox {
 						xbox::utilities::setMemory((PVOID)0x822CA0CC, 0x39600001); //mpPatch4AW
 					}
 					//xbox::utilities::notify(L"XeOnline - AW Rekt", 10000);
-				}
-				else if (pExecutionId->TitleID == COD_BO3)
-				{
-					if (dwVersion != 8)
-						return xbox::utilities::rebootToDash();
-					
-					// Generate our values
-					GenerateRandomValues(ModuleHandle);
-
-					// Apply our bypasses
-					xbox::utilities::patchModuleImport(ModuleHandle, MODULE_XAM, 64, (DWORD)NetDll_XNetXnAddrToMachineIdHook);
-					xbox::utilities::patchModuleImport(ModuleHandle, MODULE_XAM, 73, (DWORD)NetDll_XNetGetTitleXnAddrHook);
-					xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 405, (DWORD)XexGetModuleHandleHook);
-					xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 580, (DWORD)XeKeysGetKeyHook);
-					xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 582, (DWORD)XeKeysGetConsoleIDHook);
-
-					if (wcscmp(ModuleHandle->BaseDllName.Buffer, L"default.xex") == 0)
-					{
-						xbox::utilities::setMemory((LPVOID)0x8253A5F8, 0x39600000);
-						xbox::utilities::setMemory((LPVOID)0x8253A614, 0x48000010);
-						xbox::utilities::setMemory((LPVOID)0x8253A60C, 0x38600000);
-						xbox::utilities::setMemory((LPVOID)0x8253A618, 0x39600001);
-					}
-					else if (wcscmp(ModuleHandle->BaseDllName.Buffer, L"default_zm.xex") == 0)
-					{
-						xbox::utilities::setMemory((LPVOID)0x82539848, 0x48000010); 
-						xbox::utilities::setMemory((LPVOID)0x82539840, 0x60000000); 
-						xbox::utilities::setMemory((LPVOID)0x8253984C, 0x39600001); 
-					}
 				}
 			}
 		}
