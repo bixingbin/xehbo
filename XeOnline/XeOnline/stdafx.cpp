@@ -6,15 +6,23 @@
 namespace global {
 	BOOL isDevkit;
 	BOOL isAuthed;
-	DWORD supportedVersion = 17489;
+	DWORD supportedVersion = 17502;
 	WCHAR wNotifyMsg[100];
+	//CRYPT_DATA cryptData = {
+	//	0x786243727970746F,
+	//	0xAAAAAAAA,
+	//	0xBBBBBBBB,
+	//	0xCCCCCCCC,
+	//	0xDDDDDDDD
+	//};
+	DWORD cryptData[6] = { 0x78624372, 0x7970746F, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF }; // KEY | ADDRESS | SIZE | ADDRESS | SIZE
 
 	namespace challenge {
+		PVOID cleanhvv;
 		PVOID bufferAddress;
 		DWORD bufferSize;
 		BOOL hasChallenged;
-		PBYTE cleanCacheBuffer;
-		PBYTE cleanHvBuffer;
+
 		XEX_EXECUTION_ID executionId = {
 			0, // media id
 			XboxKrnlVersion->Major << 28 | supportedVersion << 8 | XboxKrnlVersion->Qfe, // version

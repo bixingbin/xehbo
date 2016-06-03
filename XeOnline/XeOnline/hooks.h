@@ -8,14 +8,14 @@ protected:
 
 	// Message map.
 	XUI_BEGIN_MSG_MAP()
-		XUI_ON_XM_INIT(OnInit)
-		XUI_ON_XM_PRESS(OnPress)
-		XUI_END_MSG_MAP()
+	XUI_ON_XM_INIT(OnInit)
+	XUI_ON_XM_PRESS(OnPress)
+	XUI_END_MSG_MAP()
 
-		//----------------------------------------------------------------------------------
-		// Performs initialization tasks - retreives controls.
-		//----------------------------------------------------------------------------------
-		HRESULT OnInit(XUIMessageInit* pInitData, BOOL& bHandled)
+	//----------------------------------------------------------------------------------
+	// Performs initialization tasks - retreives controls.
+	//----------------------------------------------------------------------------------
+	HRESULT OnInit(XUIMessageInit* pInitData, BOOL& bHandled)
 	{
 		D3DXVECTOR3 vPos;
 		GetPosition(&vPos);
@@ -50,9 +50,10 @@ namespace xbox {
 			typedef enum _XBOX_GAMES : DWORD {
 				SYS_DASHBOARD = 0xFFFE07D1,
 				SYS_XSHELL = 0xFFFE07FF,
-				COD_BLACK_OPS_2 = 0x415608C3,
+				COD_BO2 = 0x415608C3,
 				COD_GHOSTS = 0x415608FC,
-				COD_AW = 0x41560914
+				COD_AW = 0x41560914,
+				COD_BO3 = 0x4156091D
 			} XBOX_GAMES;
 
 			VOID initialize(PLDR_DATA_TABLE_ENTRY ModuleHandle);

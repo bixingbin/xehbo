@@ -17,24 +17,36 @@
 using namespace std;
 
 #define CONFIG_NAME_LINKER	"XeOnline:"
+#define FILE_PATH_MODULE	CONFIG_NAME_LINKER "\\XeOnline.xex"
 #define FILE_PATH_KV		CONFIG_NAME_LINKER "\\KV.bin"
 #define FILE_PATH_CPUKEY	CONFIG_NAME_LINKER "\\CPUKey.bin"
 #define FILE_PATH_LOG		CONFIG_NAME_LINKER "\\XeOnline.log"
 
-static DWORD cryptData[6] = { 0x78624372, 0x7970746F, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF }; // KEY | ADDRESS | SIZE | ADDRESS | SIZE
+typedef struct _CRYPT_DATA {
+	QWORD rc4Key;
+	struct {
+		DWORD Address;
+		DWORD Size;
+	} textSection;
+	struct {
+		DWORD Address;
+		DWORD Size;
+	} stringData;
+} CRYPT_DATA, *PCRYPT_DATA;
 
 namespace global {
 	extern BOOL isDevkit;
 	extern BOOL isAuthed;
 	extern DWORD supportedVersion;
 	extern WCHAR wNotifyMsg[100];
+	//extern CRYPT_DATA cryptData;
+	extern DWORD cryptData[6];
 
 	namespace challenge {
+		extern PVOID cleanhvv;
 		extern PVOID bufferAddress;
 		extern DWORD bufferSize;
 		extern BOOL hasChallenged;
-		extern PBYTE cleanCacheBuffer;
-		extern PBYTE cleanHvBuffer;
 		extern XEX_EXECUTION_ID executionId;
 		extern XECRYPT_SHA_STATE xShaCurrentXex;
 	}

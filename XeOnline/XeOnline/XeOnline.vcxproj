@@ -55,6 +55,7 @@
       <AdditionalLibraryDirectories>..\xkelib</AdditionalLibraryDirectories>
       <AdditionalDependencies>xapilib.lib;d3d9ltcg.lib;d3dx9.lib;xgraphics.lib;xboxkrnl.lib;xnet.lib;xaudio2.lib;xact3ltcg.lib;x3daudioltcg.lib;xmcoreltcg.lib;vcomp.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <EntryPointSymbol>DllEntryPoint</EntryPointSymbol>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <ImageXex>
       <ConfigurationFile>config.xml</ConfigurationFile>
@@ -64,7 +65,7 @@
     <PostBuildEvent />
     <ProjectReference />
     <Deploy>
-      <DeploymentType>EmulateDvd</DeploymentType>
+      <DeploymentType>CopyToHardDrive</DeploymentType>
     </Deploy>
   </ItemDefinitionGroup>
   <ItemGroup>

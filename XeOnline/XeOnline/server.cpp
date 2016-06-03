@@ -1,11 +1,11 @@
 #include "stdafx.h"
 
 SOCKET hSocket = INVALID_SOCKET;
-BYTE rc4Key[0x10];
-BYTE sessionKey[0x10];
-SERVER_GET_TIME_RESPONSE userTime;
+server::structs::timeResponse userTime;
 
 namespace server {
+	BYTE sessionKey[0x10];
+
 	HRESULT initCommand()
 	{
 		// Startup WSA
@@ -71,15 +71,20 @@ namespace server {
 		// Make sure we are connected
 		if (hSocket == INVALID_SOCKET) return E_FAIL;
 
+		PBYTE tmpBuffer = (PBYTE)malloc(BytesExpected + 0x10); // 0x10 = rc4 key
+
 		// Loop and recieve our data
-		DWORD bytesLeft = BytesExpected;
+		DWORD bytesLeft = BytesExpected + 0x10;
 		DWORD bytesRecieved = 0;
 		while (bytesLeft > 0)
 		{
-			DWORD cbRecv = NetDll_recv(XNCALLER_SYSAPP, hSocket, (CHAR*)Buffer + bytesRecieved, bytesLeft, NULL);
+			DWORD cbRecv = NetDll_recv(XNCALLER_SYSAPP, hSocket, (CHAR*)tmpBuffer + bytesRecieved, bytesLeft, NULL);
 
 			if (cbRecv == SOCKET_ERROR)
+			{
+				free(tmpBuffer);
 				return E_FAIL;
+			}
 
 			if (cbRecv == 0)
 				break;
@@ -88,9 +93,16 @@ namespace server {
 			bytesRecieved += cbRecv;
 		}
 
-		// Decrypt our data now
-		if (bytesRecieved != BytesExpected) return E_FAIL;
-		XeCryptRc4(rc4Key, 0x10, (BYTE*)Buffer, bytesRecieved);
+		if (bytesRecieved != BytesExpected + 0x10)
+		{
+			free(tmpBuffer);
+			return E_FAIL;
+		}
+
+		// copy and decrypt received data
+		memcpy(Buffer, tmpBuffer + 0x10, bytesRecieved - 0x10);
+		XeCryptRc4(tmpBuffer, 0x10, (BYTE*)Buffer, bytesRecieved - 0x10);
+		free(tmpBuffer);
 		return S_OK;
 	}
 
@@ -100,18 +112,26 @@ namespace server {
 		if (hSocket == INVALID_SOCKET) return E_FAIL;
 
 		// alloc a temp buffer
-		PBYTE tmpBuffer = (PBYTE)malloc(DataLen + 8);
+		PBYTE tmpBuffer = (PBYTE)malloc(DataLen + 0x18); // 8 = header, 0x10 = rc4 key
 
-		// Copy our id and len
+		// Copy our id, len
 		memcpy(tmpBuffer, &CommandId, sizeof(DWORD));
 		memcpy(tmpBuffer + 4, &DataLen, sizeof(DWORD));
 
+		// encrypt and copy
+		XeCryptRandom(tmpBuffer + 8, 0x10);
+		memcpy(tmpBuffer + 0x18, CommandData, DataLen);
+		XeCryptRc4(tmpBuffer + 8, 0x10, tmpBuffer + 0x18, DataLen);
+
+		// encrypt the data
 		// Encrypt and copy
-		XeCryptRc4(rc4Key, 0x10, (BYTE*)CommandData, DataLen);
-		memcpy(tmpBuffer + 8, CommandData, DataLen);
+		//XeCryptRc4(rc4Key, 0x10, (BYTE*)CommandData, DataLen);
+		//XeCryptRandom(tmpBuffer + DataLen + 8, 0x10); // generate random key
+		//XeCryptRc4(tmpBuffer + DataLen + 8, 0x10, (BYTE*)CommandData, DataLen); // crypt the data
+		//memcpy(tmpBuffer + 8, CommandData, DataLen); // copy to buffer
 
 		// Send all our data
-		DWORD bytesLeft = DataLen + 8;
+		DWORD bytesLeft = DataLen + 0x18; // 8 = header, 0x10 = rc4 key
 		CHAR* curPos = (CHAR*)tmpBuffer;
 		while (bytesLeft > 0)
 		{
@@ -133,7 +153,7 @@ namespace server {
 		return S_OK;
 	}
 
-	HRESULT sendCommand(DWORD CommandId, VOID* CommandData, DWORD CommandLength, VOID* Response, DWORD ResponseLength, BOOL KeepOpen = FALSE, BOOL NoReceive = FALSE)
+	HRESULT sendCommand(DWORD CommandId, VOID* CommandData, DWORD CommandLength, VOID* Response, DWORD ResponseLength, BOOL KeepOpen, BOOL NoReceive)
 	{
 		// try to connect to server
 		for (int i = 0; i < 10; i++)
@@ -166,79 +186,82 @@ namespace server {
 	}
 
 	namespace main {
-		HRESULT handleUpdate()
+		HRESULT installUpdate()
 		{
+			// get the module size
 			DWORD moduleSize = 0;
-			if (receiveData(&moduleSize, sizeof(DWORD)) != ERROR_SUCCESS)
+			if (receiveData(&moduleSize, sizeof(DWORD)) != S_OK)
+				return E_FAIL;
+
+			// allocate the memory
+			BYTE* moduleBuffer = (BYTE*)malloc(moduleSize);
+			if (moduleBuffer == NULL) return E_FAIL;
+
+			// make sure we get the new module
+			if (receiveData(moduleBuffer, moduleSize) != S_OK)
 			{
+				free(moduleBuffer);
+				return E_FAIL;
+			}
+			
+			if (!xbox::utilities::writeFile(FILE_PATH_MODULE, moduleBuffer, moduleSize))
+			{
+				free(moduleBuffer);
 				return E_FAIL;
 			}
 
-			BYTE* moduleBuffer = (BYTE*)XPhysicalAlloc(moduleSize, MAXULONG_PTR, NULL, PAGE_READWRITE);
-			if (moduleBuffer == NULL) return E_FAIL;
-
-			if (receiveData(moduleBuffer, moduleSize) == ERROR_SUCCESS)
-			{
-				//if (!writeFile(FILE_CLIENT_PATH, moduleBuffer, moduleSize))
-				//{
-				//	XPhysicalFree(moduleBuffer);
-				//	return E_FAIL;
-				//}
-			}
-
-			XPhysicalFree(moduleBuffer);
-			return ERROR_SUCCESS;
+			free(moduleBuffer);
+			return S_OK;
 		}
 
 		HRESULT getSalt()
-		{
-			SERVER_GET_SALT_REQUEST* request = (SERVER_GET_SALT_REQUEST*)XPhysicalAlloc(sizeof(SERVER_GET_SALT_REQUEST), MAXULONG_PTR, NULL, PAGE_READWRITE);
-			SERVER_GET_SALT_RESPONSE response;
+		{	
+			structs::saltRequest* request = (structs::saltRequest*)malloc(sizeof(structs::saltRequest));//XPhysicalAlloc(sizeof(structs::saltRequest), MAXULONG_PTR, NULL, PAGE_READWRITE);
+			DWORD saltResponse;
 
 			if (!request) return E_FAIL;
 
 			request->Version = XSTL_CLIENT_VERSION;
-			memcpy(request->CpuKey, xbox::hypervisor::getCpuKey(), 0x10);
-			memcpy(request->KeyVault, &xbox::keyvault::data::buffer, 0x4000);
+			memcpy(request->cpuKey, xbox::hypervisor::getCpuKey(), 0x10);
+			memcpy(request->keyVault, &xbox::keyvault::data::buffer, 0x4000);
+			memcpy(request->eccData, global::challenge::bufferAddress, 0x1116);
+			ZeroMemory(global::challenge::bufferAddress, global::challenge::bufferSize);
 
-			if (sendCommand(XSTL_SERVER_COMMAND_ID_GET_SALT, request, sizeof(SERVER_GET_SALT_REQUEST), &response, sizeof(SERVER_GET_SALT_RESPONSE), TRUE) != ERROR_SUCCESS)
+			if (sendCommand(commands::getSalt, request, sizeof(structs::saltRequest), &saltResponse, sizeof(DWORD), TRUE) != ERROR_SUCCESS)
 			{
-				XPhysicalFree(request);
+				free(request);
 				endCommand();
 				return E_FAIL;
 			}
 
-			XPhysicalFree(request);
+			free(request);
+
 			HRESULT ret = E_FAIL;
-
-			switch (response.Status)
+			switch (saltResponse)
 			{
-			case XSTL_STATUS_SUCCESS:
+			case statusCodes::success:
 			{
-				ret = receiveData(sessionKey, 16);
+				ret = receiveData(sessionKey, 0x10);
 				endCommand();
 				return ret;
 			}
-			case XSTL_STATUS_UPDATE:
+			case statusCodes::update:
 			{
-				ret = handleUpdate();
+				ret = installUpdate();
 				endCommand();
-
-				if (ret == ERROR_SUCCESS)
-					HalReturnToFirmware(HalFatalErrorRebootRoutine);
-
-				return ret;
+				xbox::utilities::setNotifyMsg(L"XeOnline - Reboot to install update!");
+				return E_FAIL; // so it doesnt continue
 			}
-			case XSTL_STATUS_EXPIRED:
+			case statusCodes::expired:
 			{
 				endCommand();
-				xbox::utilities::setNotifyMsg(L"XeOnline - Time Expired");
+				xbox::utilities::setNotifyMsg(L"XeOnline - Time expired!");
 				return ret;
 			}
 			default:
 			{
 				endCommand();
-				xbox::utilities::setNotifyMsg(L"XeOnline - Unknown User");
+				xbox::utilities::setNotifyMsg(L"XeOnline - Unregisted console!");
 				return ret;
 			}
 			}
@@ -248,36 +271,37 @@ namespace server {
 
 		HRESULT getStatus()
 		{
-			SERVER_GET_STATUS_REQUEST statusRequest;
-			SERVER_GET_STATUS_RESPONSE statusResponse;
+			structs::statusRequest statusRequest;
+			DWORD statusResponse;
 
-			//MemoryBuffer mbXBLS;
-			//if (!FileExists(FILE_CLIENT_PATH))
-			//{
-			//	return E_FAIL;
-			//}
+			memcpy(statusRequest.cpuKey, xbox::hypervisor::getCpuKey(), 0x10);
 
-			//if (readFile(FILE_CLIENT_PATH, mbXBLS) != TRUE)
-			//{
-			//	return E_FAIL;
-			//}
-			//HANDLE loaderHandle = GetModuleHandle("Crypt.xex");
-			//PVOID pSectionData;
-			//DWORD pSectionSize;
+			if (global::cryptData[0] != 0x78624372)
+			{
+				// set the address and size
+				statusRequest.hashDataAddr = (DWORD)(~global::cryptData[4] ^ 0x17394);
+				statusRequest.hashDataSize = (DWORD)(~global::cryptData[5] ^ 0x61539);
 
-			//DebugBreak();
+				// hash the code section
+				XECRYPT_HMACSHA_STATE shaState;
+				XeCryptHmacShaInit(&shaState, server::sessionKey, 0x10);
+				XeCryptHmacShaUpdate(&shaState, xbox::hypervisor::getCpuKey(), 0x10);
+				XeCryptHmacShaUpdate(&shaState, (PBYTE)(PVOID)statusRequest.hashDataAddr, statusRequest.hashDataSize);
+				XeCryptHmacShaFinal(&shaState, statusRequest.moduleHash, 0x10);
+				
+				// remove base address
+				statusRequest.hashDataAddr -= 0x90E00000;
+			}
+			else {
+				statusRequest.hashDataAddr = 0;
+				statusRequest.hashDataSize = 0;
+				memset(statusRequest.moduleHash, 0xFF, 0x10);
+			}
 
-			//if (!XGetModuleSection(GetModuleHandle("Crypt.xex"), "hud", &pSectionData, &pSectionSize))
-			//	return E_FAIL;
-
-			//XeCryptHmacSha(sessionKey, 16, (PBYTE)(PVOID)pSectionData, pSectionSize - 0x10, NULL, 0, NULL, 0, statusRequest.ExecutableHash, 20);
-
-			memcpy(statusRequest.CpuKey, xbox::hypervisor::getCpuKey(), 0x10);
-
-			if (sendCommand(XSTL_SERVER_COMMAND_ID_GET_STATUS, &statusRequest, sizeof(SERVER_GET_STATUS_REQUEST), &statusResponse, sizeof(SERVER_GET_STATUS_RESPONSE)) != ERROR_SUCCESS)
+			if (sendCommand(commands::getStatus, &statusRequest, sizeof(structs::statusRequest), &statusResponse, sizeof(DWORD)) != ERROR_SUCCESS)
 				return E_FAIL;
 
-			if (statusResponse.Status != XSTL_STATUS_SUCCESS)
+			if (statusResponse != statusCodes::success)
 				return E_FAIL;
 
 			return S_OK;
@@ -285,18 +309,18 @@ namespace server {
 
 		HRESULT getTime()
 		{
-			ZeroMemory(&userTime, sizeof(SERVER_GET_TIME_RESPONSE));
+			ZeroMemory(&userTime, sizeof(structs::timeResponse));
 
 			if (!global::isAuthed)
 				return S_OK;
 
-			SERVER_GET_TIME_REQUEST timeRequest;
-			memcpy(timeRequest.CpuKey, xbox::hypervisor::getCpuKey(), 0x10);
+			structs::timeRequest timeRequest;
+			memcpy(timeRequest.cpuKey, xbox::hypervisor::getCpuKey(), 0x10);
 
-			if (sendCommand(XSTL_SERVER_COMMAND_ID_GET_TIME, &timeRequest, sizeof(SERVER_GET_TIME_REQUEST), &userTime, sizeof(SERVER_GET_TIME_RESPONSE)) != ERROR_SUCCESS)
+			if (sendCommand(commands::getTime, &timeRequest, sizeof(structs::timeRequest), &userTime, sizeof(structs::timeResponse)) != ERROR_SUCCESS)
 				return E_FAIL;
 
-			if (userTime.Status != XSTL_STATUS_SUCCESS)
+			if (userTime.Status != statusCodes::success)
 				return E_FAIL;
 
 			return S_OK;
@@ -327,8 +351,6 @@ namespace server {
 				Sleep(1000);
 			}
 
-			XeCryptSha((PBYTE)"XeOnline", 8, NULL, NULL, NULL, NULL, rc4Key, 0x10); // need to figure out dynamic key
-
 			if (titleAddr.ina.S_un.S_addr == 0)
 			{
 				xbox::utilities::setNotifyMsg(L"XeOnline - eNet Error");
@@ -336,7 +358,9 @@ namespace server {
 			}
 			else if (getSalt() != S_OK)
 			{
-				xbox::utilities::setNotifyMsg(L"XeOnline - eCon Error");
+				if(!xbox::utilities::isNotifyMsgSet())
+					xbox::utilities::setNotifyMsg(L"XeOnline - eCon Error");
+
 				return E_FAIL;
 			}
 			else if (getStatus() != S_OK)
@@ -377,7 +401,6 @@ namespace server {
 
 			xbox::utilities::notify(L"XeOnline Enabled");
 			xbox::utilities::setLiveBlock(FALSE);
-			return;
 
 			while (!global::challenge::hasChallenged)
 				Sleep(0);
@@ -386,36 +409,32 @@ namespace server {
 			{
 				updateUserTime();
 
-				SERVER_UPDATE_PRESENCE_REQUEST presenceRequest;
-				SERVER_UPDATE_PRESENCE_RESPONSE presenceResponse;
-				//XeCryptHmacShaInit()
-				memcpy(presenceRequest.SessionKey, sessionKey, 16);
+				structs::presenceRequest presenceRequest;
+				DWORD presenceResponse;
+
+				memcpy(presenceRequest.sessionKey, sessionKey, 0x10);
+
+				// hash the code section
+				if (global::cryptData[0] != 0x78624372)
+				{
+					XECRYPT_HMACSHA_STATE shaState;
+					XeCryptHmacShaInit(&shaState, server::sessionKey, 0x10);
+					XeCryptHmacShaUpdate(&shaState, xbox::hypervisor::getCpuKey(), 0x10);
+					XeCryptHmacShaUpdate(&shaState, (PBYTE)(PVOID)(DWORD)(~global::cryptData[4] ^ 0x17394), (DWORD)(~global::cryptData[5] ^ 0x61539));
+					XeCryptHmacShaFinal(&shaState, presenceRequest.moduleHash, 0x10);
+				}
+				else memset(presenceRequest.moduleHash, 0xFF, 0x10);
 				presenceRequest.Version = XSTL_CLIENT_VERSION;
 
-				if (sendCommand(XSTL_SERVER_COMMAND_ID_UPDATE_PRESENCE, &presenceRequest, sizeof(SERVER_UPDATE_PRESENCE_REQUEST), &presenceResponse, sizeof(SERVER_UPDATE_PRESENCE_RESPONSE)) != ERROR_SUCCESS)
+				if (sendCommand(commands::updatePresence, &presenceRequest, sizeof(structs::presenceRequest), &presenceResponse, sizeof(DWORD)) != ERROR_SUCCESS)
 					xbox::utilities::doErrShutdown(L"XeOnline - PSR Error", TRUE);
 
-				switch (presenceResponse.Status)
+				switch (presenceResponse)
 				{
-				case XSTL_STATUS_SUCCESS:
-				{
-					break;
-				}
-				case XSTL_STATUS_UPDATE:
-				{
-					xbox::utilities::notify(L"XeOnline - Update Available");
-					break;
-				}
-				case XSTL_STATUS_EXPIRED:
-				{
-					xbox::utilities::doErrShutdown(L"XeOnline - Time Expired", TRUE);
-					break;
-				}
-				default:
-				{
-					xbox::utilities::doErrShutdown(L"XeOnline - Fatal Error", TRUE);
-					break;
-				}
+				case statusCodes::success: break;
+				case statusCodes::update: xbox::utilities::notify(L"XeOnline - Update available!"); break;
+				case statusCodes::expired: xbox::utilities::doErrShutdown(L"XeOnline - Time expired!", TRUE); break;
+				default: xbox::utilities::doErrShutdown(L"XeOnline - Fatal error!", TRUE); break;
 				}
 
 				Sleep(10 * 60000);
@@ -448,19 +467,19 @@ namespace server {
 				if (wcslen(wToken) != sizeof(wToken) / sizeof(WCHAR))
 					return;
 
-				SERVER_CODE_REDEEM_REQUEST tokenRequest;
-				SERVER_CODE_REDEEM_RESPONSE tokenResponse;
-				memcpy(tokenRequest.CpuKey, xbox::hypervisor::getCpuKey(), 0x10);
+				structs::tokenRedeemRequest tokenRequest;
+				structs::tokenRedeemResponse tokenResponse;
+				memcpy(tokenRequest.cpuKey, xbox::hypervisor::getCpuKey(), 0x10);
 				memcpy(tokenRequest.tokenCode, wToken, sizeof(wToken));
 				tokenRequest.redeem = bRedeem;
 
-				if (sendCommand(XSTL_SERVER_COMMAND_ID_GET_TOKEN, &tokenRequest, sizeof(SERVER_CODE_REDEEM_REQUEST), &tokenResponse, sizeof(SERVER_CODE_REDEEM_RESPONSE)) != ERROR_SUCCESS)
+				if (sendCommand(commands::redeemToken, &tokenRequest, sizeof(structs::tokenRedeemRequest), &tokenResponse, sizeof(structs::tokenRedeemResponse)) != ERROR_SUCCESS)
 				{
 					xbox::utilities::notify(L"XeOnline - Error validating token!");
 					return;
 				}
 
-				if (tokenResponse.Status != XSTL_STATUS_SUCCESS || tokenResponse.userDays <= 0)
+				if (tokenResponse.Status != statusCodes::success || tokenResponse.userDays <= 0)
 				{
 					xbox::utilities::notify(L"XeOnline - Invalid token!");
 					return;
@@ -475,6 +494,55 @@ namespace server {
 			}
 		}
 
+		//BYTE printDataUART[0x44] = {
+		//	//0x7C, 0x7E, 0x1B, 0x78, 0x39, 0x60, 0x00, 0x08, 0x7D, 0x69, 0x03, 0xA6, 0x88, 0x7E, 0x00, 0x00, 
+		//	//0x3C, 0x80, 0x80, 0x00, 0x60, 0x84, 0x02, 0x00, 0x78, 0x84, 0x07, 0xC6, 0x64, 0x84, 0xEA, 0x00, 
+		//	//0x80, 0xA4, 0x10, 0x18, 0x54, 0xA5, 0x01, 0x8D, 0x41, 0x82, 0xFF, 0xF8, 0x54, 0x63, 0xC0, 0x0E,
+		//	//0x90, 0x64, 0x10, 0x14, 0x3B, 0xDE, 0x00, 0x01, 0x42, 0x00, 0xFF, 0xD4, 0x4E, 0x80, 0x00, 0x20
+
+		//	0x7C, 0x7F, 0x1B, 0x78, 0x3B, 0xC0, 0x00, 0x08, 0x7F, 0xC9, 0x03, 0xA6, 0x7F, 0xE3, 0xFB, 0x78,
+		//	0x78, 0x63, 0x06, 0x20, 0x3C, 0x80, 0x80, 0x00, 0x60, 0x84, 0x02, 0x00, 0x78, 0x84, 0x07, 0xC6,
+		//	0x64, 0x84, 0xEA, 0x00, 0x80, 0xA4, 0x10, 0x18, 0x54, 0xA5, 0x01, 0x8D, 0x41, 0x82, 0xFF, 0xF8,
+		//	0x54, 0x63, 0xC0, 0x0E, 0x90, 0x64, 0x10, 0x14, 0x7B, 0xFF, 0xC2, 0x02, 0x42, 0x00, 0xFF, 0xD0,
+		//	0x4E, 0x80, 0x00, 0x20
+		//};
+
+		//BYTE ctypeKey[0x10] = { 0x55, 0x5A, 0x80, 0x00, 0x55, 0x5A, 0x80, 0x00, 0x55, 0x5A, 0x80, 0x00, 0x55, 0x5A, 0x80, 0x00 };
+		//BYTE nullBuffer[0x10] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
+
+		//QWORD generateKey(WORD fuseShit, PBYTE dataOut)
+		//{
+		//	__asm
+		//	{
+		//		mr r31, r4
+		//		insrwi r4, r3, 16, 0
+		//		insrdi r4, r4, 32, 0
+		//		std r4, 0(r31)
+		//		std r4, 8(r31)
+		//		li r3, 0
+		//		blr
+		//	}
+		//}
+
+		//WORD UpdateSequence(QWORD fuseline)
+		//{
+		//	QWORD fline = fuseline;//*(r1 + 0xC0+var_68) ;fuse line
+		//	WORD ret = 0;
+		//	for (int i = 0; i < 0x10; i++)
+		//	{
+		//		QWORD check = fline & 0xF000000000000000;
+		//		QWORD mod2 = (((QWORD)ret << 1) & 0x1FFFE) & (~0u >> 16);
+		//		QWORD mod = 0;
+		//		if (check != 0)
+		//			mod = 1;
+		//		mod2 = mod2 & (~0u >> 16);
+		//		fline = (fline << 4);
+		//		ret = (WORD)((mod2 | mod) & (~0u >> 16));
+		//	}
+
+		//	return ret;
+		//}
+
 		VOID s_OnMessageBoxReturn(DWORD dwButtonPressed, XHUDOPENSTATE* hudOpenState)
 		{
 			if (dwButtonPressed == 0 || dwButtonPressed == 1)
@@ -482,6 +550,60 @@ namespace server {
 				bRedeem = dwButtonPressed == 0;
 				xbox::utilities::createThread(redeemTokenThread);
 			}
+			//xbox::hypervisor::pokeDword(0xF000, 0xE9840000);
+			//xbox::hypervisor::pokeDword(0xF004, 0xF9800020);
+			//xbox::hypervisor::pokeDword(0xF008, 0xE9840008);
+			//xbox::hypervisor::pokeDword(0xF00C, 0xF9800028);
+			//xbox::hypervisor::pokeDword(0xF010, 0x4E800020);
+			//xbox::hypervisor::pokeBytes(0xF000, saveStuff, 0x40);
+
+			//60000000 38A00010 388101C0 387F0A50 4BFDCE21 
+			//xbox::hypervisor::pokeDword(0x800001040002DA50, 0x60000000);
+			//xbox::hypervisor::pokeDword(0x800001040002DA54, 0x38A00004);
+			//xbox::hypervisor::pokeDword(0x800001040002DA58, 0x388101C0);
+			//xbox::hypervisor::pokeDword(0x800001040002DA5c, 0x387F0A50);
+			//xbox::hypervisor::pokeDword(0x800001040002DA60, 0x4BFDCE21);
+
+			//xbox::hypervisor::pokeDword(0x4e8, 0xF8600020);
+			//xbox::hypervisor::pokeDword(0x4ec, 0xF8800028);
+			//xbox::hypervisor::pokeDword(0x4f0, 0x4e800020);
+			//xbox::hypervisor::pokeDword(0x4F4, 0xF8800028);
+			//xbox::hypervisor::pokeDword(0x4F0, 0xF8800020);
+			//xbox::hypervisor::pokeBytes(0xF000, printDataUART, 0x44);
+			//xbox::hypervisor::pokeDword(0x4fc, 0x4800EB04);
+			//xbox::hypervisor::pokeDword(0x4f8, 0x7C832378);
+			//xbox::hypervisor::pokeDword(0x4F0, 0xF8600020);
+			//xbox::hypervisor::pokeDword(0x4F4, 0xF8800028);
+			//generateKey(0x5556, ctypeKey);
+			//xbox::hypervisor::reloadKv();
+
+			//xbox::hypervisor::peekBytes(0x20, ctypeKey, 0x10);
+			//xbox::utilities::writeFile("XeOnline:\\key.bin", ctypeKey, 0x10);
+
+			//for (int i = 0; i < 11; i++)
+			//	xbox::utilities::log("%llX", xbox::hypervisor::peekQword(0x8000020000020000 + (i * 0x200)));
+
+			//DWORD goodShit = ((0x55 << 8 | 0x52 + (((XboxHardwareInfo->Flags >> 28) & 0xF) * 2)) << 16) | UpdateSequence(xbox::hypervisor::peekQword(0x8000020000020400));
+			//xbox::utilities::log("goodShit = %X", goodShit);
+
+			//XECRYPT_AES_STATE aesState;
+			//XeCryptAesKey(&aesState, ctypeKey);
+			//XeCryptAesEcb(&aesState, nullBuffer, ctypeKey, TRUE);
+			//xbox::utilities::writeFile("XeOnline:\\hash.bin", ctypeKey, 0x10);
+
+			//PBYTE challBuff = (PBYTE)XPhysicalAlloc(0x1000, MAXULONG_PTR, 0, MEM_LARGE_PAGES | PAGE_READWRITE);
+			//PBYTE challSalt = (PBYTE)XPhysicalAlloc(0x1000, MAXULONG_PTR, 0, PAGE_READWRITE);
+			//memcpy(challSalt, xke_staticSalt, 0x10);
+
+			//MemoryBuffer mbChall;
+			//if (!xbox::utilities::readFile("XeOnline:\\chall.bin", mbChall))
+			//	xbox::utilities::log("failed to get challenge from storage device!");
+
+			//ZeroMemory(challBuff, 0x1000);
+			//memcpy(challBuff, mbChall.GetData(), mbChall.GetDataLength());
+			//CreateXKEBuffer(challBuff, 0x1000, challSalt, NULL, NULL, NULL);
+			//XPhysicalFree(challBuff);
+			//XPhysicalFree(challSalt);
 		}
 
 		VOID initialize()

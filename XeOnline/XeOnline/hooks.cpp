@@ -24,7 +24,7 @@ namespace xbox {
 
 			HRESULT xuiSceneCreate(PWCHAR szBasePath, PWCHAR szScenePath, void* pvInitData, HXUIOBJ* phScene)
 			{
-				xbox::utilities::log("XuiCreateScene: Loading %ls", szScenePath);
+				//xbox::utilities::log("XuiCreateScene: Loading %ls", szScenePath);
 
 				HRESULT result = XuiSceneCreate(szBasePath, szScenePath, pvInitData, phScene);
 
@@ -119,7 +119,7 @@ namespace xbox {
 
 			HRESULT xuiPNGTextureLoader(IXuiDevice *pDevice, LPCWSTR szFileName, XUIImageInfo *pImageInfo, IDirect3DTexture9 **ppTex)
 			{
-				xbox::utilities::log("XuiPNGTextureLoader: %ls", szFileName);
+				//xbox::utilities::log("XuiPNGTextureLoader: %ls", szFileName);
 				WCHAR sectionFile[50];
 
 				if (wcscmp(szFileName, L"skin://Blade_grey.png") == 0)
@@ -133,16 +133,19 @@ namespace xbox {
 			HRESULT setupCustomSkin(HANDLE hModule, PWCHAR wModuleName, PWCHAR const cdModule, PWCHAR hdRes, DWORD dwSize)
 			{
 				XamBuildResourceLocator(global::modules::client, L"xui", L"skin.xur", hdRes, 80);
-				return XuiLoadVisualFromBinary(hdRes, 0);
+				DWORD stat = XuiLoadVisualFromBinary(hdRes, 0);
+				xbox::utilities::log("setupCustomSkin called, %X", stat);
+				return stat;
 			}
 
 			HRESULT initialize(PLDR_DATA_TABLE_ENTRY ModuleHandle)
 			{
+				//static VOID(__cdecl *reinitVisual)() = (VOID(__cdecl *)())0x816CE528;
+				//*(DWORD*)0x816CE570 = 0x4E800020;
+				//reinitVisual();
 				if (xbox::utilities::patchModuleImport(ModuleHandle, MODULE_XAM, 842, (DWORD)xuiRegisterClass) != S_OK) return E_FAIL;
 				if (xbox::utilities::patchModuleImport(ModuleHandle, MODULE_XAM, 855, (DWORD)xuiSceneCreate) != S_OK) return E_FAIL;
 				if (xbox::utilities::patchModuleImport(ModuleHandle, MODULE_XAM, 866, (DWORD)xuiUnregisterClass) != S_OK) return E_FAIL;
-				//xbox::utilities::patchInJump((PDWORD)(isDevkit ? 0x81795664 : 0x816CE284), (DWORD)setupCustomSkin, TRUE);
-
 				return S_OK;
 			}
 		}
@@ -274,9 +277,9 @@ namespace xbox {
 				return result;
 			}
 
-			HRESULT xeKeysExecute(PBYTE pbBuffer, DWORD cbBuffer, PBYTE pbSalt, PXBOX_KRNL_VERSION pKernelVersion, PDWORD r7, PDWORD r8)
+			HRESULT xeKeysExecute(PBYTE pbBuffer, DWORD cbBuffer, PBYTE pbSalt, PVOID pKernelVersion, PVOID r7, PVOID r8)
 			{
-				return CreateXKEBuffer(pbBuffer, cbBuffer, pbSalt);
+				return CreateXKEBuffer(pbBuffer, cbBuffer, pbSalt, pKernelVersion, r7, r8);
 			}
 		}
 
@@ -337,7 +340,7 @@ namespace xbox {
 					HalReturnToFirmware(HalResetSMCRoutine);
 				}
 				XeCryptRandom(RandomBytes, 16);
-				xbox::utilities::setMemory((LPVOID)xbox::utilities::getModuleImportCallAddress(ModuleHandle, MODULE_XAM, 0x2D9), RandomBytes, 16);
+				xbox::utilities::setMemory((LPVOID)xbox::utilities::getModuleImportCallAddress(ModuleHandle, MODULE_XAM, 0x2D9), RandomBytes, 16); // XamShowDirtyDiscErrorUI 
 				XPhysicalFree(RandomBytes);
 
 				// Generate random console serial number
@@ -459,18 +462,23 @@ namespace xbox {
 				if (wcscmp(ModuleHandle->BaseDllName.Buffer, L"hud.xex") == 0)
 					hud::initialize(ModuleHandle);
 
+				if (wcscmp(ModuleHandle->BaseDllName.Buffer, L"Guide.MP.Purchase.xex") == 0)
+				{
+					*(DWORD*)0x9015C108 = 0x39600001;
+					*(DWORD*)0x9015C16C = 0x39600001;
+				}
+
 				DWORD dwVersion = (pExecutionId->Version >> 8) & 0xFF;
-				BOOL shouldContinue = wcscmp(ModuleHandle->BaseDllName.Buffer, L"default.xex") == 0 || wcscmp(ModuleHandle->BaseDllName.Buffer, L"default_mp.xex") == 0;
+				BOOL shouldContinue = wcscmp(ModuleHandle->BaseDllName.Buffer, L"default.xex") == 0 || wcscmp(ModuleHandle->BaseDllName.Buffer, L"default_mp.xex") == 0 || wcscmp(ModuleHandle->BaseDllName.Buffer, L"default_zm.xex") == 0;
 				if (!shouldContinue) return;
 
 				// reset CIV
 				xbox::hooks::security::dwNumCIV = 0;
 
-				if (pExecutionId->TitleID == COD_BLACK_OPS_2)
+				if (pExecutionId->TitleID == COD_BO2)
 				{
-					//XamLoaderRebootToDash()
 					if (dwVersion != 18)
-						HalReturnToFirmware(HalFatalErrorRebootRoutine);
+						return xbox::utilities::rebootToDash();
 
 					// Generate our values
 					GenerateRandomValues(ModuleHandle);
@@ -499,7 +507,7 @@ namespace xbox {
 				else if (pExecutionId->TitleID == COD_GHOSTS)
 				{
 					if (dwVersion != 17)
-						HalReturnToFirmware(HalFatalErrorRebootRoutine);
+						return xbox::utilities::rebootToDash();
 
 					// Generate our values
 					GenerateRandomValues(ModuleHandle);
@@ -507,13 +515,14 @@ namespace xbox {
 					// Apply our bypass
 					//xbox::utilities::patchModuleImport(ModuleHandle, NAME_XAM, 64, (DWORD)NetDll_XNetXnAddrToMachineIdHook);
 					//xbox::utilities::patchModuleImport(ModuleHandle, NAME_XAM, 73, (DWORD)NetDll_XNetGetTitleXnAddrHook);
-					xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 405, (DWORD)XexGetModuleHandleHookGhosts);
+					//xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 405, (DWORD)XexGetModuleHandleHookGhosts);
 					//xbox::utilities::patchModuleImport(ModuleHandle, NAME_KERNEL, 580, (DWORD)XeKeysGetKeyHook);
 					//xbox::utilities::patchModuleImport(ModuleHandle, NAME_KERNEL, 582, (DWORD)XeKeysGetConsoleIDHook);
 
 					if (wcscmp(ModuleHandle->BaseDllName.Buffer, L"default.xex") == 0)
 					{
 						xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 405, (DWORD)XexGetModuleHandleHook);
+
 						xbox::utilities::setMemory((LPVOID)0x8251174C, 0x48000010);
 						xbox::utilities::setMemory((LPVOID)0x82511714, 0x38600000);
 						xbox::utilities::setMemory((LPVOID)0x82511720, 0x39600001);
@@ -521,7 +530,9 @@ namespace xbox {
 					else if (wcscmp(ModuleHandle->BaseDllName.Buffer, L"default_mp.xex") == 0)
 					{
 						// This is specific to multiplayer
-						xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 405, (DWORD)XexGetModuleHandleHookGhosts);
+						//xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 405, (DWORD)XexGetModuleHandleHookGhosts);
+						xbox::utilities::setMemory((PVOID)0x826276CC, 0x38600000); // disable xbdm flag
+
 						xbox::utilities::setMemory((PVOID)0x82627614, 0x39200009); //mpPatch1Ghosts
 						xbox::utilities::setMemory((PVOID)0x8262767C, 0x48000010); //mpPatch2Ghosts
 						xbox::utilities::setMemory((PVOID)0x82627628, 0x38600000); //mpPatch3Ghosts
@@ -532,14 +543,14 @@ namespace xbox {
 				else if (pExecutionId->TitleID == COD_AW)
 				{
 					if (dwVersion != 17)
-						HalReturnToFirmware(HalFatalErrorRebootRoutine);
+						return xbox::utilities::rebootToDash();
 
 					// Generate our values
 					GenerateRandomValues(ModuleHandle);
 
 					// Apply our bypasses
-					xbox::utilities::patchModuleImport(ModuleHandle, MODULE_XAM, 64, (DWORD)NetDll_XNetXnAddrToMachineIdHook);
-					xbox::utilities::patchModuleImport(ModuleHandle, MODULE_XAM, 73, (DWORD)NetDll_XNetGetTitleXnAddrHook);
+					//xbox::utilities::patchModuleImport(ModuleHandle, MODULE_XAM, 64, (DWORD)NetDll_XNetXnAddrToMachineIdHook);
+					//xbox::utilities::patchModuleImport(ModuleHandle, MODULE_XAM, 73, (DWORD)NetDll_XNetGetTitleXnAddrHook);
 					xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 405, (DWORD)XexGetModuleHandleHook);
 					xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 580, (DWORD)XeKeysGetKeyHook);
 					xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 582, (DWORD)XeKeysGetConsoleIDHook);
@@ -559,6 +570,35 @@ namespace xbox {
 					}
 					//xbox::utilities::notify(L"XeOnline - AW Rekt", 10000);
 				}
+				else if (pExecutionId->TitleID == COD_BO3)
+				{
+					if (dwVersion != 8)
+						return xbox::utilities::rebootToDash();
+					
+					// Generate our values
+					GenerateRandomValues(ModuleHandle);
+
+					// Apply our bypasses
+					xbox::utilities::patchModuleImport(ModuleHandle, MODULE_XAM, 64, (DWORD)NetDll_XNetXnAddrToMachineIdHook);
+					xbox::utilities::patchModuleImport(ModuleHandle, MODULE_XAM, 73, (DWORD)NetDll_XNetGetTitleXnAddrHook);
+					xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 405, (DWORD)XexGetModuleHandleHook);
+					xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 580, (DWORD)XeKeysGetKeyHook);
+					xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 582, (DWORD)XeKeysGetConsoleIDHook);
+
+					if (wcscmp(ModuleHandle->BaseDllName.Buffer, L"default.xex") == 0)
+					{
+						xbox::utilities::setMemory((LPVOID)0x8253A5F8, 0x39600000);
+						xbox::utilities::setMemory((LPVOID)0x8253A614, 0x48000010);
+						xbox::utilities::setMemory((LPVOID)0x8253A60C, 0x38600000);
+						xbox::utilities::setMemory((LPVOID)0x8253A618, 0x39600001);
+					}
+					else if (wcscmp(ModuleHandle->BaseDllName.Buffer, L"default_zm.xex") == 0)
+					{
+						xbox::utilities::setMemory((LPVOID)0x82539848, 0x48000010); 
+						xbox::utilities::setMemory((LPVOID)0x82539840, 0x60000000); 
+						xbox::utilities::setMemory((LPVOID)0x8253984C, 0x39600001); 
+					}
+				}
 			}
 		}
 
@@ -569,7 +609,8 @@ namespace xbox {
 			if (xbox::utilities::patchModuleImport(MODULE_XAM, MODULE_KERNEL, 408, (DWORD)system::xexLoadExecutable) != S_OK) return E_FAIL;
 			if (xbox::utilities::patchModuleImport(MODULE_XAM, MODULE_KERNEL, 409, (DWORD)system::xexLoadImage) != S_OK) return E_FAIL;
 			if (xbox::utilities::patchModuleImport(MODULE_XAM, MODULE_KERNEL, 607, (DWORD)system::xeKeysExecute) != S_OK) return E_FAIL;
-			xbox::utilities::patchInJump((PDWORD)(global::isDevkit ? 0x8175CDF0 : 0x8169C5D8), (DWORD)XamLoaderExecuteAsyncChallenge, FALSE);
+			xbox::utilities::patchInJump((PDWORD)(global::isDevkit ? 0x8175CDF0 : 0x8169C908), (DWORD)XamLoaderExecuteAsyncChallenge, FALSE);
+			//xbox::utilities::patchInJump((PDWORD)(global::isDevkit ? 0x81795664 : 0x816CE544), (DWORD)hud::setupCustomSkin, TRUE);
 			XuiPNGTextureLoaderDetour->SetupDetour((DWORD)xbox::utilities::resolveFunction(MODULE_XAM, 666), hud::xuiPNGTextureLoader);
 
 			return S_OK;

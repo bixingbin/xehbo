@@ -1,6 +1,6 @@
 #include "stdafx.h"
 
-static BYTE masterKey[272] = {
+const BYTE masterKey[272] = {
 	0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0xDD, 0x5F, 0x49, 0x6F, 0x99, 0x4D, 0x37, 0xBB, 0xE4, 0x5B, 0x98, 0xF2, 0x5D, 0xA6, 0xB8, 0x43,
 	0xBE, 0xD3, 0x10, 0xFD, 0x3C, 0xA4, 0xD4, 0xAC, 0xE6, 0x92, 0x3A, 0x79, 0xDB, 0x3B, 0x63, 0xAF,
@@ -28,7 +28,7 @@ namespace xbox {
 			DWORD cTypeFlags;
 			DWORD hardwareFlags;
 			DWORD hvStatusFlags = 0x23289D3;
-			WORD bldrFlags = 0xD83E;
+			DWORD bldrFlags = 0xD83E;
 			BYTE consoleType;
 			BYTE cpuKey[0x10];
 			BYTE cpuKeyDigest[0x14];
@@ -68,13 +68,13 @@ namespace xbox {
 			if (fcrtRequired)
 			{
 				data::hvStatusFlags |= 0x1000000;
-				data::bldrFlags = 0xD81E;
+				//data::bldrFlags = 0xD81E;
 			}
 
 			if (moboSerialByte < 0x10)
 			{
 				data::consoleType = 0;
-				data::cTypeFlags = 0x010C0FFB;
+				data::cTypeFlags = 0x010B0FFB;
 			}
 			else if (moboSerialByte < 0x14)
 			{
@@ -103,40 +103,26 @@ namespace xbox {
 			}
 
 			data::hardwareFlags = (XboxHardwareInfo->Flags & 0x0FFFFFFF) | ((data::consoleType & 0xF) << 28);
+			data::hardwareFlags = data::hardwareFlags &~0x20;
 			data::updSeqFlags = updSeq;
 
-			// setup clean hv for chall
-			MemoryBuffer mbHv;
-			if (!xbox::utilities::readFile("XeOnline:\\HV.bin", mbHv))
-				return E_FAIL;
+			// setup kv console data
+			xbox::hypervisor::pokeDword(0x4, data::bldrFlags);
 
-			global::challenge::cleanHvBuffer = (PBYTE)XPhysicalAlloc(mbHv.GetDataLength(), MAXULONG_PTR, NULL, PAGE_READWRITE);
-			memcpy(global::challenge::cleanHvBuffer, mbHv.GetData(), mbHv.GetDataLength());
-
-			// setup clean cache for chall
-			//MemoryBuffer mbCache;
-			//if (!xbox::utilities::readFile("XeOnline:\\CACHE.bin", mbCache))
-			//	return E_FAIL;
-
-			//global::challenge::cleanCacheBuffer = (PBYTE)XPhysicalAlloc(mbCache.GetDataLength(), MAXULONG_PTR, NULL, PAGE_READWRITE);
-			//memcpy(global::challenge::cleanCacheBuffer, mbCache.GetData(), mbCache.GetDataLength());
-
-			// setup console data
-			memcpy(global::challenge::cleanHvBuffer + 0x20, keyvault::data::cpuKey, 0x10);
-			*(DWORD*)(global::challenge::cleanHvBuffer + 0x6) = keyvault::data::bldrFlags;
-			*(DWORD*)(global::challenge::cleanHvBuffer + 0x14) = keyvault::data::updSeqFlags;
-			*(DWORD*)(global::challenge::cleanHvBuffer + 0x30) = keyvault::data::hvStatusFlags;
-			*(DWORD*)(global::challenge::cleanHvBuffer + 0x74) = keyvault::data::cTypeFlags;
+			xbox::hypervisor::pokeDword(0x14, data::updSeqFlags);
+			xbox::hypervisor::pokeBytes(0x20, data::cpuKey, 0x10);
+			xbox::hypervisor::pokeDword(0x30, data::hvStatusFlags);
+			xbox::hypervisor::pokeDword(0x74, data::cTypeFlags);
 
 			// disable chall decryption & fix NiNJA fuckup for xebuild images
-			xbox::hypervisor::pokeDword(global::isDevkit ? 0x60B0 : 0x6148, 0x60000000);
-			xbox::hypervisor::pokeDword(global::isDevkit ? 0x60E4 : 0x617C, 0x38600001);
-			if (global::isDevkit) xbox::hypervisor::pokeDword(0x5FF8, 0x48000010);
-			if (!global::isDevkit) *(DWORD*)0x80109574 = 0x44000002;
+			//xbox::hypervisor::pokeDword(global::isDevkit ? 0x60B0 : 0x6148, 0x60000000);
+			//xbox::hypervisor::pokeDword(global::isDevkit ? 0x60E4 : 0x617C, 0x38600001);
+			//if (global::isDevkit) xbox::hypervisor::pokeDword(0x5FF8, 0x48000010);
+			//if (!global::isDevkit) *(DWORD*)0x80109574 = 0x44000002;
 
 			// setup our custom challenge
-			if (!XGetModuleSection(global::modules::client, "HVC", &global::challenge::bufferAddress, &global::challenge::bufferSize))
-				return E_FAIL;
+			//if (!XGetModuleSection(global::modules::client, "HVC", &global::challenge::bufferAddress, &global::challenge::bufferSize))
+			//	return E_FAIL;
 
 			return S_OK;
 		}
@@ -152,28 +138,33 @@ namespace xbox {
 			if (mbKv.GetDataLength() != 0x4000)
 				return E_FAIL;
 
-			xbox::utilities::readFile(FILE_PATH_CPUKEY, mbCpu);
-			memcpy(data::cpuKey, mbCpu.GetDataLength() == 0x10 ? mbCpu.GetData() : xbox::hypervisor::getCpuKey(), 0x10);
+			if (!xbox::utilities::readFile(FILE_PATH_CPUKEY, mbCpu))
+				return E_FAIL;
+
+			if (mbCpu.GetDataLength() != 0x10)
+				return E_FAIL;
+
+			memcpy(data::cpuKey, mbCpu.GetData(), 0x10);
+			//memcpy(data::cpuKey, mbCpu.GetDataLength() == 0x10 ? mbCpu.GetData() : xbox::hypervisor::getCpuKey(), 0x10);
 			XeCryptSha(data::cpuKey, 0x10, NULL, NULL, NULL, NULL, data::cpuKeyDigest, XECRYPT_SHA_DIGEST_SIZE);
 
 			QWORD kvAddress = xbox::hypervisor::peekQword(global::isDevkit ? 0x00000002000162E0 : 0x0000000200016240);
 
 			memcpy(&data::buffer, mbKv.GetData(), 0x4000);
+			ZeroMemory(data::buffer.RoamableObfuscationKey, 0x10);
 
-			XECRYPT_HMACSHA_STATE hmacShaKv;
-			XeCryptHmacShaInit(&hmacShaKv, data::cpuKey, 0x10);
-			XeCryptHmacShaUpdate(&hmacShaKv, (BYTE*)&data::buffer.OddFeatures, 0xD4);
-			XeCryptHmacShaUpdate(&hmacShaKv, (BYTE*)&data::buffer.DvdKey, 0x1CF8);
-			XeCryptHmacShaUpdate(&hmacShaKv, (BYTE*)&data::buffer.CardeaCertificate, 0x2108);
-			XeCryptHmacShaFinal(&hmacShaKv, data::keyvaultDigest, XECRYPT_SHA_DIGEST_SIZE);
+			XECRYPT_HMACSHA_STATE hmacSha;
+			XeCryptHmacShaInit(&hmacSha, data::cpuKey, 0x10);
+			XeCryptHmacShaUpdate(&hmacSha, (PBYTE)&data::buffer.OddFeatures, 0xD4);
+			XeCryptHmacShaUpdate(&hmacSha, data::buffer.DvdKey, 0x1CF8);
+			XeCryptHmacShaUpdate(&hmacSha, data::buffer.CardeaCertificate, 0x2108);
+			XeCryptHmacShaFinal(&hmacSha, data::keyvaultDigest, XECRYPT_SHA_DIGEST_SIZE);
 
 			if (!XeKeysPkcs1Verify(data::keyvaultDigest, data::buffer.KeyVaultSignature, (XECRYPT_RSA*)masterKey))
 				xbox::utilities::log("The cpu key provided is not for this keyvault.");
 
 			xbox::utilities::setMemory((PVOID)0x8E03A000, &data::buffer.ConsoleCertificate, 0x1A8);
-
 			if (global::isDevkit) xbox::utilities::setMemory((BYTE*)(GetPointer(0x81D6B198) + 0x30BC), &data::buffer.ConsoleCertificate, 0x1A8);
-
 			xbox::utilities::setMemory((PVOID)0x8E038020, &data::buffer.ConsoleCertificate.ConsoleId.abData, 5);
 
 			BYTE newHash[XECRYPT_SHA_DIGEST_SIZE];
@@ -182,6 +173,7 @@ namespace xbox {
 
 			xbox::hypervisor::peekBytes(kvAddress + 0xD0, &data::buffer.ConsoleObfuscationKey, 0x40);
 			xbox::hypervisor::pokeBytes(kvAddress, &data::buffer, 0x4000);
+			if(!global::isDevkit) XamCacheReset(XAM_CACHE_TICKETS);
 
 			BYTE currentMacAddress[6];
 			BYTE spoofedMacAddress[6] = {
@@ -207,7 +199,10 @@ namespace xbox {
 			if (NT_SUCCESS(ExGetXConfigSetting(XCONFIG_SECURED_CATEGORY, XCONFIG_SECURED_MAC_ADDRESS, currentMacAddress, 6, NULL)))
 				if (memcmp(currentMacAddress, spoofedMacAddress, 6) != 0)
 					if (NT_SUCCESS(ExSetXConfigSetting(XCONFIG_SECURED_CATEGORY, XCONFIG_SECURED_MAC_ADDRESS, spoofedMacAddress, 6)))
+					{
+						XamCacheReset(XAM_CACHE_ALL);
 						HalReturnToFirmware(HalFatalErrorRebootRoutine);
+					}
 
 			DWORD temp = 0;
 			XeCryptSha(spoofedMacAddress, 6, NULL, NULL, NULL, NULL, (BYTE*)&temp, 4);
@@ -215,10 +210,12 @@ namespace xbox {
 			if (setupSpecialValues(temp & ~0xFF) != S_OK)
 				return E_FAIL;
 
-			XamCacheReset(XAM_CACHE_ALL);
 
-			if (xbox::hypervisor::reloadKv() != S_OK)
-				return E_FAIL;
+			//if(!global::isDevkit)
+			//	XamCacheReset(XAM_CACHE_TICKETS);
+
+			//if (xbox::hypervisor::reloadKv() != S_OK)
+			//	return E_FAIL;
 
 			return S_OK;
 		}

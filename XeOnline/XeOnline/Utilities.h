@@ -119,10 +119,12 @@ namespace xbox {
 		HRESULT setLiveBlock(BOOL enabled);
 		VOID setNotifyMsg(WCHAR* msg);
 		BOOL isNotifyMsgSet();
+		VOID rebootToDash();
 		VOID doErrShutdown(WCHAR* msg, BOOL reboot = FALSE);
 		VOID patchInJump(DWORD* Address, DWORD Destination, BOOL Linked);
 		VOID patchInBranch(DWORD* Address, DWORD Destination, BOOL Linked);
 		FARPROC resolveFunction(CHAR* ModuleName, DWORD Ordinal);
+		IMAGE_SECTION_HEADER* findNtSection(IMAGE_SECTION_HEADER* Sections, WORD SectionCount, CHAR* SectionName);
 		DWORD getModuleImportCallAddress(LDR_DATA_TABLE_ENTRY* moduleHandle, CHAR* ImportedModuleName, DWORD Ordinal);
 		DWORD patchModuleImport(CHAR* Module, CHAR* ImportedModuleName, DWORD Ordinal, DWORD PatchAddress);
 		DWORD patchModuleImport(PLDR_DATA_TABLE_ENTRY Module, CHAR* ImportedModuleName, DWORD Ordinal, DWORD PatchAddress);

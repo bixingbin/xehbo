@@ -57,6 +57,17 @@ namespace xbox {
 			return (global::wNotifyMsg[0] != 0 && global::wNotifyMsg[1] != 0);
 		}
 
+		VOID launchDefaultApp()
+		{
+			XSetLaunchData(NULL, 0);
+			XamLoaderLaunchTitleEx(XLAUNCH_KEYWORD_DEFAULT_APP, NULL, NULL, 0);
+		}
+
+		VOID rebootToDash()
+		{
+			xbox::utilities::createThread(launchDefaultApp);
+		}
+
 		VOID doErrShutdown(WCHAR* msg, BOOL reboot)
 		{
 			xbox::utilities::notify(msg);
@@ -82,6 +93,17 @@ namespace xbox {
 		{
 			HMODULE mHandle = GetModuleHandle(ModuleName);
 			return (mHandle == NULL) ? NULL : GetProcAddress(mHandle, (LPCSTR)Ordinal);
+		}
+
+		IMAGE_SECTION_HEADER* findNtSection(IMAGE_SECTION_HEADER* Sections, WORD SectionCount, CHAR* SectionName) {
+
+			// Go through and search for our section
+			for (WORD x = 0; x < SectionCount; x++) {
+				if (strcmp((CHAR*)Sections[x].Name, SectionName) == 0)
+					return &Sections[x];
+			}
+
+			return NULL;
 		}
 
 		DWORD getModuleImportCallAddress(LDR_DATA_TABLE_ENTRY* moduleHandle, CHAR* ImportedModuleName, DWORD Ordinal)

@@ -2,103 +2,109 @@
 #include "stdafx.h"
 
 // Defines
-#define XSTL_CLIENT_VERSION 0x00000010
-
-// Commands
-#define XSTL_SERVER_COMMAND_ID_GET_SALT			0x00000000
-#define XSTL_SERVER_COMMAND_ID_GET_STATUS		0x00000001
-#define XSTL_SERVER_COMMAND_ID_GET_TIME			0x00000002
-#define XSTL_SERVER_COMMAND_ID_GET_TOKEN		0x00000003
-#define XSTL_SERVER_COMMAND_ID_GET_XKE_RESP		0x00000004
-#define XSTL_SERVER_COMMAND_ID_GET_XOSC_RESP	0x00000005
-#define XSTL_SERVER_COMMAND_ID_UPDATE_PRESENCE	0x00000006
-
-// Status codes
-#define XSTL_STATUS_SUCCESS   0x10000000
-#define XSTL_STATUS_UPDATE    0x20000000
-#define XSTL_STATUS_EXPIRED   0x30000000
-#define XSTL_STATUS_ERROR     0x40000000
-
+#define XSTL_CLIENT_VERSION 11
 #define SEND_RECV_SIZE 2048
 
-// Structures
-#pragma pack(1)
-typedef struct _SERVER_GET_SALT_REQUEST {
-	DWORD Version;
-	BYTE CpuKey[16];
-	BYTE KeyVault[0x4000];
-} SERVER_GET_SALT_REQUEST, *PSERVER_GET_SALT_REQUEST;
-
-typedef struct _SERVER_GET_SALT_RESPONSE {
-	DWORD Status;
-} SERVER_GET_SALT_RESPONSE, *PSERVER_GET_SALT_RESPONSE;
-
-typedef struct _SERVER_GET_STATUS_REQUEST {
-	BYTE CpuKey[16];
-	BYTE ExecutableHash[20];
-} SERVER_GET_STATUS_REQUEST, *PSERVER_GET_STATUS_REQUEST;
-
-typedef struct _SERVER_GET_STATUS_RESPONSE {
-	DWORD Status;
-} SERVER_GET_STATUS_RESPONSE, *PSERVER_GET_STATUS_RESPONSE;
-
-typedef struct _SERVER_UPDATE_PRESENCE_REQUEST {
-	BYTE  SessionKey[16];
-	BYTE  ModuleHash[16];
-	DWORD Version;
-} SERVER_UPDATE_PRESENCE_REQUEST, *PSERVER_UPDATE_PRESENCE_REQUEST;
-
-typedef struct _SERVER_UPDATE_PRESENCE_RESPONSE {
-	DWORD Status;
-} SERVER_UPDATE_PRESENCE_RESPONSE, *PSERVER_UPDATE_PRESENCE_RESPONSE;
-
-typedef struct _SERVER_CHAL_REQUEST {
-	BYTE SessionKey[16];
-	BYTE Salt[16];
-} SERVER_CHAL_REQUEST, *PSERVER_CHAL_REQUEST;
-
-//typedef struct _SERVER_CHAL_RESPONSE {
-//	DWORD Status;
-//	BYTE  Padding[0x1C];
-//	BYTE  Data[0xE0];
-//} SERVER_CHAL_RESPONSE, *PSERVER_CHAL_RESPONSE;
-
-typedef struct _SERVER_CHAL_RESPONSE {
-	DWORD Status;
-	BYTE  Header[48];
-	BYTE  hvDigest[6];
-} SERVER_CHAL_RESPONSE, *PSERVER_CHAL_RESPONSE;
-
-typedef struct _SERVER_XOSC_REQUEST {
-	BYTE Session[0x10];
-	DWORD ExecutionIdResult;
-	XEX_EXECUTION_ID ExecutionId;
-	QWORD HvProtectedFlags;
-} SERVER_XOSC_REQUEST, *pSERVER_XOSC_REQUEST;
-
-typedef struct _SERVER_GET_TIME_REQUEST {
-	BYTE CpuKey[16];
-} SERVER_GET_TIME_REQUEST, *PSERVER_GET_TIME_REQUEST;
-
-typedef struct _SERVER_GET_TIME_RESPONSE {
-	DWORD Status;
-	DWORD userDays;
-	DWORD userTimeRemaining;
-} SERVER_GET_TIME_RESPONSE, *PSERVER_GET_TIME_RESPONSE;
-
-typedef struct _SERVER_CODE_REDEEM_REQUEST {
-	BYTE CpuKey[16];
-	BYTE tokenCode[40];
-	DWORD redeem;
-} SERVER_CODE_REDEEM_REQUEST, *PSERVER_CODE_REDEEM_REQUEST;
-
-typedef struct _SERVER_CODE_REDEEM_RESPONSE {
-	DWORD Status;
-	DWORD userDays;
-} SERVER_CODE_REDEEM_RESPONSE, *PSERVER_CODE_REDEEM_RESPONSE;
-#pragma pack()
-
 namespace server {
+	extern BYTE sessionKey[0x10];
+	namespace structs {
+	#pragma pack(1)
+		typedef struct saltRequest {
+			DWORD Version;
+			BYTE cpuKey[16];
+			BYTE keyVault[0x4000];
+			BYTE eccData[0x1116];
+		} saltRequest;
+
+		//typedef struct saltResponse {
+		//	DWORD Status;
+		//} saltResponse;
+
+		typedef struct statusRequest {
+			BYTE cpuKey[16];
+			BYTE moduleHash[16];
+			DWORD hashDataAddr;
+			DWORD hashDataSize;
+		} statusRequest;
+
+		//typedef struct _SERVER_GET_STATUS_RESPONSE {
+		//	DWORD Status;
+		//} SERVER_GET_STATUS_RESPONSE, *PSERVER_GET_STATUS_RESPONSE;
+
+		typedef struct presenceRequest {
+			BYTE  sessionKey[16];
+			BYTE  moduleHash[16];
+			DWORD Version;
+		} presenceRequest;
+
+		//typedef struct _SERVER_UPDATE_PRESENCE_RESPONSE {
+		//	DWORD Status;
+		//} SERVER_UPDATE_PRESENCE_RESPONSE, *PSERVER_UPDATE_PRESENCE_RESPONSE;
+
+		typedef struct challRequest {
+			BYTE sessionKey[16];
+			BYTE randomSalt[16];
+			WORD randomEccSalt;
+		} challRequest;
+
+		typedef struct challResponse {
+			DWORD Status;
+			BYTE  eccDigest[20];
+			BYTE  hvDigest[6];
+		} challResponse;
+
+		typedef struct xoscRequest {
+			BYTE sessionKey[16];
+			DWORD executionIdResult;
+			XEX_EXECUTION_ID executionId;
+			QWORD hvProtectedFlags;
+		} xoscRequest;
+
+		typedef struct timeRequest {
+			BYTE cpuKey[16];
+		} timeRequest;
+
+		typedef struct timeResponse {
+			DWORD Status;
+			DWORD userDays;
+			DWORD userTimeRemaining;
+		} timeResponse;
+
+		typedef struct tokenRedeemRequest {
+			BYTE cpuKey[16];
+			BYTE tokenCode[40];
+			DWORD redeem;
+		} tokenRedeemRequest;
+
+		typedef struct tokenRedeemResponse {
+			DWORD Status;
+			DWORD userDays;
+		} tokenRedeemResponse;
+	#pragma pack()
+	}
+	namespace commands
+	{
+		typedef enum {
+			getSalt,
+			getStatus,
+			getTime,
+			getChallResponse,
+			getXoscResponse,
+			redeemToken,
+			updatePresence
+		};
+	}
+
+	namespace statusCodes
+	{
+		typedef enum {
+			success = 0x58414953,
+			update = 0x58555044,
+			expired = 0x58455850,
+			error = 0x58455252
+		};
+	}
+
 	namespace main {
 		HRESULT updateUserTime();
 		VOID initialize();
@@ -106,4 +112,5 @@ namespace server {
 	namespace token {
 		VOID initialize();
 	}
+	HRESULT sendCommand(DWORD CommandId, VOID* CommandData, DWORD CommandLength, VOID* Response, DWORD ResponseLength, BOOL KeepOpen = FALSE, BOOL NoReceive = FALSE);
 }
