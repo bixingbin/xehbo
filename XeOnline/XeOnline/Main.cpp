@@ -85,7 +85,7 @@ void rc4_encryption(char* content, int content_length, char* key, int key_length
 }
 
 BOOL WINAPI DllEntryPoint(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpReserved)
-{
+{//f
 	if (dwReason == DLL_PROCESS_ATTACH || dwReason == DLL_THREAD_ATTACH)
 	{
 		if (XamLoaderGetDvdTrayState() == DVD_TRAY_STATE_OPEN)
