@@ -235,3 +235,5 @@ _Pvt_Extensions
 
 # FAKE - F# Make
 .fake/
+/XeOnline/XeOnline/sectionData/hv.bin
+/XeOnline/XeOnline.VC.db

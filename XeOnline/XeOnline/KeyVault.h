@@ -286,6 +286,7 @@ namespace xbox {
 			extern BYTE cpuKey[0x10];
 			extern BYTE cpuKeyDigest[0x14];
 			extern BYTE keyvaultDigest[0x14];
+			extern BYTE proccessDigest[0x14];
 		}
 
 		HRESULT initialize();

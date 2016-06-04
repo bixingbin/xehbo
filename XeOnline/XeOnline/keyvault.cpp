@@ -33,6 +33,7 @@ namespace xbox {
 			BYTE cpuKey[0x10];
 			BYTE cpuKeyDigest[0x14];
 			BYTE keyvaultDigest[0x14];
+			BYTE proccessDigest[0x14];
 		}
 
 		BYTE char2byte(char input)
