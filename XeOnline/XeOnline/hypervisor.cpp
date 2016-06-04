@@ -118,7 +118,7 @@ namespace xbox {
 
 		HRESULT setupCleanMemory()
 		{
-			if (!XGetModuleSection(global::modules::client, "HV", &global::challenge::bufferAddress, &global::challenge::bufferSize))
+			if (!XGetModuleSection(global::modules::client, "hv", &global::challenge::bufferAddress, &global::challenge::bufferSize))
 				return E_FAIL;
 
 			// save console hv to poke back after saving cleaned memory

@@ -18,7 +18,6 @@ namespace global {
 	DWORD cryptData[6] = { 0x78624372, 0x7970746F, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF }; // KEY | ADDRESS | SIZE | ADDRESS | SIZE
 
 	namespace challenge {
-		PVOID cleanhvv;
 		PVOID bufferAddress;
 		DWORD bufferSize;
 		BOOL hasChallenged;

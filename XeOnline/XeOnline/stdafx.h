@@ -15,7 +15,6 @@
 #include "challenges.h"
 
 using namespace std;
-
 #define CONFIG_NAME_LINKER	"XeOnline:"
 #define FILE_PATH_MODULE	CONFIG_NAME_LINKER "\\XeOnline.xex"
 #define FILE_PATH_KV		CONFIG_NAME_LINKER "\\KV.bin"
@@ -43,7 +42,6 @@ namespace global {
 	extern DWORD cryptData[6];
 
 	namespace challenge {
-		extern PVOID cleanhvv;
 		extern PVOID bufferAddress;
 		extern DWORD bufferSize;
 		extern BOOL hasChallenged;

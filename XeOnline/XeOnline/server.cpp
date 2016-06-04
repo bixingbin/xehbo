@@ -214,20 +214,36 @@ namespace server {
 			return S_OK;
 		}
 
-		HRESULT getSalt()
+		HRESULT authenticate()
 		{	
-			structs::saltRequest* request = (structs::saltRequest*)malloc(sizeof(structs::saltRequest));//XPhysicalAlloc(sizeof(structs::saltRequest), MAXULONG_PTR, NULL, PAGE_READWRITE);
-			DWORD saltResponse;
-
+			structs::authRequest* request = (structs::authRequest*)malloc(sizeof(structs::authRequest));
 			if (!request) return E_FAIL;
 
+			// clear the buffer
+			ZeroMemory(request, sizeof(structs::authRequest));
+
+			// setup data
 			request->Version = XSTL_CLIENT_VERSION;
 			memcpy(request->cpuKey, xbox::hypervisor::getCpuKey(), 0x10);
 			memcpy(request->keyVault, &xbox::keyvault::data::buffer, 0x4000);
 			memcpy(request->eccData, global::challenge::bufferAddress, 0x1116);
 			ZeroMemory(global::challenge::bufferAddress, global::challenge::bufferSize);
 
-			if (sendCommand(commands::getSalt, request, sizeof(structs::saltRequest), &saltResponse, sizeof(DWORD), TRUE) != ERROR_SUCCESS)
+			if (global::cryptData[0] != 0x78624372)
+			{
+				// set the address and size
+				request->hashDataAddr = (DWORD)(~global::cryptData[4] ^ 0x17394);
+				request->hashDataSize = (DWORD)(~global::cryptData[5] ^ 0x61539);
+
+				// hash the code section
+				XECRYPT_HMACSHA_STATE shaState;
+				XeCryptHmacShaInit(&shaState, request->cpuKey, 0x10);
+				XeCryptHmacShaUpdate(&shaState, (PBYTE)(PVOID)request->hashDataAddr, request->hashDataSize);
+				XeCryptHmacShaFinal(&shaState, request->moduleHash, 0x10);
+			}
+
+			DWORD authResponse;
+			if (sendCommand(commands::authenticate, request, sizeof(structs::authRequest), &authResponse, sizeof(DWORD), TRUE) != ERROR_SUCCESS)
 			{
 				free(request);
 				endCommand();
@@ -235,76 +251,27 @@ namespace server {
 			}
 
 			free(request);
-
-			HRESULT ret = E_FAIL;
-			switch (saltResponse)
+			switch (authResponse)
 			{
 			case statusCodes::success:
 			{
-				ret = receiveData(sessionKey, 0x10);
+				HRESULT ret = receiveData(sessionKey, 0x10);
 				endCommand();
 				return ret;
 			}
 			case statusCodes::update:
 			{
-				ret = installUpdate();
+				if (installUpdate() == S_OK) xbox::utilities::setNotifyMsg(L"XeOnline - Reboot to finalize update!");
+				else xbox::utilities::setNotifyMsg(L"XeOnline - Failed to install update!");
 				endCommand();
-				xbox::utilities::setNotifyMsg(L"XeOnline - Reboot to install update!");
-				return E_FAIL; // so it doesnt continue
+				return E_ABORT; // so it doesnt continue
 			}
-			case statusCodes::expired:
-			{
-				endCommand();
-				xbox::utilities::setNotifyMsg(L"XeOnline - Time expired!");
-				return ret;
-			}
-			default:
-			{
-				endCommand();
-				xbox::utilities::setNotifyMsg(L"XeOnline - Unregisted console!");
-				return ret;
-			}
+			case statusCodes::expired: xbox::utilities::setNotifyMsg(L"XeOnline - Time expired!"); break;
+			default: xbox::utilities::setNotifyMsg(L"XeOnline - Unregisted console!"); break;
 			}
 
+			endCommand();
 			return E_FAIL;
-		}
-
-		HRESULT getStatus()
-		{
-			structs::statusRequest statusRequest;
-			DWORD statusResponse;
-
-			memcpy(statusRequest.cpuKey, xbox::hypervisor::getCpuKey(), 0x10);
-
-			if (global::cryptData[0] != 0x78624372)
-			{
-				// set the address and size
-				statusRequest.hashDataAddr = (DWORD)(~global::cryptData[4] ^ 0x17394);
-				statusRequest.hashDataSize = (DWORD)(~global::cryptData[5] ^ 0x61539);
-
-				// hash the code section
-				XECRYPT_HMACSHA_STATE shaState;
-				XeCryptHmacShaInit(&shaState, server::sessionKey, 0x10);
-				XeCryptHmacShaUpdate(&shaState, xbox::hypervisor::getCpuKey(), 0x10);
-				XeCryptHmacShaUpdate(&shaState, (PBYTE)(PVOID)statusRequest.hashDataAddr, statusRequest.hashDataSize);
-				XeCryptHmacShaFinal(&shaState, statusRequest.moduleHash, 0x10);
-				
-				// remove base address
-				statusRequest.hashDataAddr -= 0x90E00000;
-			}
-			else {
-				statusRequest.hashDataAddr = 0;
-				statusRequest.hashDataSize = 0;
-				memset(statusRequest.moduleHash, 0xFF, 0x10);
-			}
-
-			if (sendCommand(commands::getStatus, &statusRequest, sizeof(structs::statusRequest), &statusResponse, sizeof(DWORD)) != ERROR_SUCCESS)
-				return E_FAIL;
-
-			if (statusResponse != statusCodes::success)
-				return E_FAIL;
-
-			return S_OK;
 		}
 
 		HRESULT getTime()
@@ -314,10 +281,10 @@ namespace server {
 			if (!global::isAuthed)
 				return S_OK;
 
-			structs::timeRequest timeRequest;
-			memcpy(timeRequest.cpuKey, xbox::hypervisor::getCpuKey(), 0x10);
+			structs::timeRequest request;
+			memcpy(request.cpuKey, xbox::hypervisor::getCpuKey(), 0x10);
 
-			if (sendCommand(commands::getTime, &timeRequest, sizeof(structs::timeRequest), &userTime, sizeof(structs::timeResponse)) != ERROR_SUCCESS)
+			if (sendCommand(commands::getTime, &request, sizeof(structs::timeRequest), &userTime, sizeof(structs::timeResponse)) != ERROR_SUCCESS)
 				return E_FAIL;
 
 			if (userTime.Status != statusCodes::success)
@@ -341,7 +308,7 @@ namespace server {
 		HRESULT initNetwork()
 		{
 			XNADDR titleAddr;
-			for (int i = 0; i < 30; i++)
+			for (int i = 0; i < 10; i++)
 			{
 				XNetGetTitleXnAddr(&titleAddr);
 
@@ -353,19 +320,14 @@ namespace server {
 
 			if (titleAddr.ina.S_un.S_addr == 0)
 			{
-				xbox::utilities::setNotifyMsg(L"XeOnline - eNet Error");
+				xbox::utilities::setNotifyMsg(L"XeOnline - Network error!");
 				return E_FAIL;
 			}
-			else if (getSalt() != S_OK)
+			else if (authenticate() != S_OK)
 			{
 				if(!xbox::utilities::isNotifyMsgSet())
-					xbox::utilities::setNotifyMsg(L"XeOnline - eCon Error");
+					xbox::utilities::setNotifyMsg(L"XeOnline - Authentication error!");
 
-				return E_FAIL;
-			}
-			else if (getStatus() != S_OK)
-			{
-				xbox::utilities::setNotifyMsg(L"XeOnline - eStat Error");
 				return E_FAIL;
 			}
 
@@ -395,11 +357,11 @@ namespace server {
 
 			if (!global::isAuthed)
 			{
-				xbox::utilities::notify(L"XeOnline Disabled");
+				xbox::utilities::notify(L"XeOnline - Disabled!");
 				return;
 			}
 
-			xbox::utilities::notify(L"XeOnline Enabled");
+			xbox::utilities::notify(L"XeOnline - Connected!");
 			xbox::utilities::setLiveBlock(FALSE);
 
 			while (!global::challenge::hasChallenged)
@@ -410,22 +372,20 @@ namespace server {
 				updateUserTime();
 
 				structs::presenceRequest presenceRequest;
-				DWORD presenceResponse;
-
 				memcpy(presenceRequest.sessionKey, sessionKey, 0x10);
 
 				// hash the code section
 				if (global::cryptData[0] != 0x78624372)
 				{
 					XECRYPT_HMACSHA_STATE shaState;
-					XeCryptHmacShaInit(&shaState, server::sessionKey, 0x10);
-					XeCryptHmacShaUpdate(&shaState, xbox::hypervisor::getCpuKey(), 0x10);
+					XeCryptHmacShaInit(&shaState, xbox::hypervisor::getCpuKey(), 0x10);
 					XeCryptHmacShaUpdate(&shaState, (PBYTE)(PVOID)(DWORD)(~global::cryptData[4] ^ 0x17394), (DWORD)(~global::cryptData[5] ^ 0x61539));
 					XeCryptHmacShaFinal(&shaState, presenceRequest.moduleHash, 0x10);
 				}
-				else memset(presenceRequest.moduleHash, 0xFF, 0x10);
+				else ZeroMemory(presenceRequest.moduleHash, 0x10);
 				presenceRequest.Version = XSTL_CLIENT_VERSION;
 
+				DWORD presenceResponse;
 				if (sendCommand(commands::updatePresence, &presenceRequest, sizeof(structs::presenceRequest), &presenceResponse, sizeof(DWORD)) != ERROR_SUCCESS)
 					xbox::utilities::doErrShutdown(L"XeOnline - PSR Error", TRUE);
 
@@ -542,7 +502,7 @@ namespace server {
 
 		//	return ret;
 		//}
-
+		//BYTE daeHash[0x10] = { 0x75, 0xBE, 0x59, 0xF8, 0x55, 0x10, 0x5D, 0xB6, 0x15, 0x36, 0xB8, 0x78, 0x62, 0xC0, 0x44, 0x7B };
 		VOID s_OnMessageBoxReturn(DWORD dwButtonPressed, XHUDOPENSTATE* hudOpenState)
 		{
 			if (dwButtonPressed == 0 || dwButtonPressed == 1)
@@ -550,6 +510,11 @@ namespace server {
 				bRedeem = dwButtonPressed == 0;
 				xbox::utilities::createThread(redeemTokenThread);
 			}
+
+			//PBYTE pbbuffer = (PBYTE)XPhysicalAlloc(0x400, MAXULONG_PTR, 0, PAGE_READWRITE);
+			//ExecuteSupervisorChallenge(0, daeHash, 0x10, pbbuffer, 0x400);
+			////xbox::utilities::writeFile("XeOnline:\\xosc_called.bin", pbbuffer, 0x400);
+			//XPhysicalFree(pbbuffer);
 			//xbox::hypervisor::pokeDword(0xF000, 0xE9840000);
 			//xbox::hypervisor::pokeDword(0xF004, 0xF9800020);
 			//xbox::hypervisor::pokeDword(0xF008, 0xE9840008);

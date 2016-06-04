@@ -108,7 +108,6 @@ namespace xbox {
 
 			// setup kv console data
 			xbox::hypervisor::pokeDword(0x4, data::bldrFlags);
-
 			xbox::hypervisor::pokeDword(0x14, data::updSeqFlags);
 			xbox::hypervisor::pokeBytes(0x20, data::cpuKey, 0x10);
 			xbox::hypervisor::pokeDword(0x30, data::hvStatusFlags);
@@ -145,7 +144,6 @@ namespace xbox {
 				return E_FAIL;
 
 			memcpy(data::cpuKey, mbCpu.GetData(), 0x10);
-			//memcpy(data::cpuKey, mbCpu.GetDataLength() == 0x10 ? mbCpu.GetData() : xbox::hypervisor::getCpuKey(), 0x10);
 			XeCryptSha(data::cpuKey, 0x10, NULL, NULL, NULL, NULL, data::cpuKeyDigest, XECRYPT_SHA_DIGEST_SIZE);
 
 			QWORD kvAddress = xbox::hypervisor::peekQword(global::isDevkit ? 0x00000002000162E0 : 0x0000000200016240);
@@ -209,13 +207,6 @@ namespace xbox {
 			
 			if (setupSpecialValues(temp & ~0xFF) != S_OK)
 				return E_FAIL;
-
-
-			//if(!global::isDevkit)
-			//	XamCacheReset(XAM_CACHE_TICKETS);
-
-			//if (xbox::hypervisor::reloadKv() != S_OK)
-			//	return E_FAIL;
 
 			return S_OK;
 		}

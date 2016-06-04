@@ -351,7 +351,7 @@ namespace xbox {
 			PVOID patchesAddr;
 			DWORD patchesSize;
 
-			if (!XGetModuleSection(global::modules::client, global::isDevkit ? "DEVKITP" : "RETAILP", &patchesAddr, &patchesSize))
+			if (!XGetModuleSection(global::modules::client, global::isDevkit ? "dev" : "rgh", &patchesAddr, &patchesSize))
 				return E_FAIL;
 
 			return applyPatches(patchesAddr) != 0 ? S_OK : E_FAIL;
