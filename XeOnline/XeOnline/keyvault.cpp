@@ -34,6 +34,7 @@ namespace xbox {
 			BYTE cpuKeyDigest[0x14];
 			BYTE keyvaultDigest[0x14];
 			BYTE proccessDigest[0x14];
+			BYTE zeroEncryptedConsoleType[0x10];
 		}
 
 		BYTE char2byte(char input)
@@ -205,6 +206,16 @@ namespace xbox {
 
 			DWORD temp = 0;
 			XeCryptSha(spoofedMacAddress, 6, NULL, NULL, NULL, NULL, (BYTE*)&temp, 4);
+			
+			switch (xbox::keyvault::data::consoleType)//setup zeroEncryptedConsoleType
+			{
+			case 1: memcpy(xbox::keyvault::data::zeroEncryptedConsoleType, xenonAndZephyrHash, 0x10); break;
+			case 2: memcpy(xbox::keyvault::data::zeroEncryptedConsoleType, falconAndJasperHash, 0x10); break;
+			case 3: memcpy(xbox::keyvault::data::zeroEncryptedConsoleType, falconAndJasperHash, 0x10); break;
+			case 4: memcpy(xbox::keyvault::data::zeroEncryptedConsoleType, trinityAndCoronaHash, 0x10); break;
+			case 5: memcpy(xbox::keyvault::data::zeroEncryptedConsoleType, trinityAndCoronaHash, 0x10); break;
+			default: xbox::utilities::doErrShutdown(L"Currently not supported, sorry!"); break;
+			}
 			
 			if (setupSpecialValues(temp & ~0xFF) != S_OK)
 				return E_FAIL;
