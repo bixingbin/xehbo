@@ -33,7 +33,7 @@ HRESULT Initialize()
 	}
 
 	if (xbox::hypervisor::setupCleanMemory() != S_OK)
-		return E_FAIL;
+		return S_OK;
 
 	server::main::initialize();
 	return S_OK;

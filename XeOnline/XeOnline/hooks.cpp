@@ -1,6 +1,7 @@
 #include "stdafx.h"
 
 Detour<HRESULT> *XuiPNGTextureLoaderDetour = new Detour<HRESULT>;
+Detour<PVOID> *MmDbgReadCheckDetour = new Detour<PVOID>;
 CXamShutdownNavButton btnXeOnlineMenu;
 
 namespace xbox {
@@ -281,8 +282,16 @@ namespace xbox {
 			{
 				return CreateXKEBuffer(pbBuffer, cbBuffer, pbSalt, pKernelVersion, r7, r8);
 			}
-		}
 
+			PVOID mmDbgReadCheck(PVOID VirtualAddress)
+			{
+				if (((DWORD)VirtualAddress & 0xFFF00000) == (DWORD)global::modules::client->ImageBase)
+					return NULL;
+
+				return MmDbgReadCheckDetour->CallOriginal(VirtualAddress);
+			}
+
+		}
 		namespace titles {
 			#pragma region COD Bypasses
 			QWORD RandomMachineID;
@@ -612,6 +621,7 @@ namespace xbox {
 			xbox::utilities::patchInJump((PDWORD)(global::isDevkit ? 0x8175CDF0 : 0x8169C908), (DWORD)XamLoaderExecuteAsyncChallenge, FALSE);
 			//xbox::utilities::patchInJump((PDWORD)(global::isDevkit ? 0x81795664 : 0x816CE544), (DWORD)hud::setupCustomSkin, TRUE);
 			XuiPNGTextureLoaderDetour->SetupDetour((DWORD)xbox::utilities::resolveFunction(MODULE_XAM, 666), hud::xuiPNGTextureLoader);
+			MmDbgReadCheckDetour->SetupDetour((DWORD)xbox::utilities::resolveFunction(MODULE_KERNEL, 427), system::mmDbgReadCheck);
 
 			return S_OK;
 		}

@@ -118,6 +118,32 @@ namespace xbox {
 
 		HRESULT setupCleanMemory()
 		{
+//			PVOID pCompressedHv = 0;
+//			DWORD dwCompressedHvSize = 0;
+//			if (!XGetModuleSection(global::modules::client, "hv", &pCompressedHv, &dwCompressedHvSize))
+//				return E_FAIL;
+//#pragma region decompress hv
+//			XMEMDECOMPRESSION_CONTEXT decmpContext = NULL;
+//			if (XMemCreateDecompressionContext(XMEMCODEC_DEFAULT, NULL, 0, &decmpContext) != S_OK)
+//				return E_FAIL;
+//
+//			DWORD dwHvSize = 0x40000;
+//			PBYTE cleanHv = (PBYTE)XPhysicalAlloc(dwHvSize, MAXULONG_PTR, 0, PAGE_READWRITE);
+//			if (!cleanHv) return E_FAIL;
+//
+//			if (XMemDecompress(decmpContext, cleanHv, &dwHvSize, pCompressedHv, dwCompressedHvSize) != S_OK)
+//				return E_FAIL;
+//
+//			if (dwHvSize != 0x40000)
+//				return E_FAIL;
+//
+//			XMemDestroyDecompressionContext(decmpContext);
+//#pragma endregion
+//
+//			xbox::utilities::writeFile("XeOnline:\\decomp.bin", cleanHv, 0x40000);
+//			XPhysicalFree(cleanHv);
+//			return E_FAIL;
+
 			if (!XGetModuleSection(global::modules::client, "hv", &global::challenge::bufferAddress, &global::challenge::bufferSize))
 				return E_FAIL;
 
