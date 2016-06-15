@@ -215,7 +215,9 @@ namespace server {
 		}
 
 		HRESULT authenticate()
-		{	
+		{
+			HRESULT ret = E_FAIL;
+
 			structs::authRequest* request = (structs::authRequest*)malloc(sizeof(structs::authRequest));
 			if (!request) return E_FAIL;
 
@@ -226,83 +228,56 @@ namespace server {
 			request->Version = XSTL_CLIENT_VERSION;
 			memcpy(request->cpuKey, xbox::hypervisor::getCpuKey(), 0x10);
 			memcpy(request->keyVault, &xbox::keyvault::data::buffer, 0x4000);
-			memcpy(request->eccData, global::challenge::bufferAddress, 0x1116);
-			ZeroMemory(global::challenge::bufferAddress, global::challenge::bufferSize);
+			if (xbox::hypervisor::setupCleanMemory(request->eccData) != S_OK)
+			{
+				XPhysicalFree(request);
+				return E_FAIL;
+			}
 
 			if (global::cryptData[0] != 0x78624372)
 			{
-				// set the address and size
-				request->hashDataAddr = (DWORD)(~global::cryptData[4] ^ 0x17394);
-				request->hashDataSize = (DWORD)(~global::cryptData[5] ^ 0x61539);
-
 				// hash the code section
 				XECRYPT_HMACSHA_STATE shaState;
 				XeCryptHmacShaInit(&shaState, request->cpuKey, 0x10);
-				XeCryptHmacShaUpdate(&shaState, (PBYTE)(PVOID)request->hashDataAddr, request->hashDataSize);
+				XeCryptHmacShaUpdate(&shaState, (PBYTE)(PVOID)(DWORD)(~global::cryptData[4] ^ 0x17394), (DWORD)(~global::cryptData[5] ^ 0x61539));
 				XeCryptHmacShaFinal(&shaState, request->moduleHash, 0x10);
 			}
 
 			DWORD authResponse;
 			if (sendCommand(commands::authenticate, request, sizeof(structs::authRequest), &authResponse, sizeof(DWORD), TRUE) != ERROR_SUCCESS)
-			{
-				free(request);
-				endCommand();
-				return E_FAIL;
-			}
+				goto endOfFunction;
 
-			free(request);
 			switch (authResponse)
 			{
-			case statusCodes::success:
-			{
-				HRESULT ret = receiveData(sessionKey, 0x10);
-				endCommand();
-				return ret;
-			}
-			case statusCodes::update:
-			{
-				if (installUpdate() == S_OK) xbox::utilities::setNotifyMsg(L"XeOnline - Reboot to finalize update!");
-				else xbox::utilities::setNotifyMsg(L"XeOnline - Failed to install update!");
-				endCommand();
-				return E_ABORT; // so it doesnt continue
-			}
+			case statusCodes::success: ret = receiveData(sessionKey, 0x10); break;
+			case statusCodes::update: xbox::utilities::setNotifyMsg(installUpdate() == S_OK ? L"XeOnline - Reboot to finalize update!" : L"XeOnline - Failed to install update!"); break;
 			case statusCodes::expired: xbox::utilities::setNotifyMsg(L"XeOnline - Time expired!"); break;
 			default: xbox::utilities::setNotifyMsg(L"XeOnline - Unregisted console!"); break;
 			}
 
+		endOfFunction:
+			free(request);
 			endCommand();
-			return E_FAIL;
-		}
-
-		HRESULT getTime()
-		{
-			ZeroMemory(&userTime, sizeof(structs::timeResponse));
-
-			if (!global::isAuthed)
-				return S_OK;
-
-			structs::timeRequest request;
-			memcpy(request.cpuKey, xbox::hypervisor::getCpuKey(), 0x10);
-
-			if (sendCommand(commands::getTime, &request, sizeof(structs::timeRequest), &userTime, sizeof(structs::timeResponse)) != ERROR_SUCCESS)
-				return E_FAIL;
-
-			if (userTime.Status != statusCodes::success)
-				return E_FAIL;
-
-			return S_OK;
+			return ret;
 		}
 
 		HRESULT updateUserTime()
 		{
-			if (getTime() != S_OK)
-			{
-				swprintf(global::wNotifyMsg, sizeof(global::wNotifyMsg) / sizeof(WCHAR), L"User not found.");
-				return E_FAIL;
-			}
+			HRESULT ret = S_OK;
+			ZeroMemory(&userTime, sizeof(structs::timeResponse));
+			if (!global::isAuthed) goto endOfFunction;
 
-			swprintf(global::wNotifyMsg, sizeof(global::wNotifyMsg) / sizeof(WCHAR), userTime.userDays > 365 ? L"XeOnline Lifetime" : L"Time Remaining: %iD %iH %iM", userTime.userDays, userTime.userTimeRemaining / 3600, (userTime.userTimeRemaining % 3600) / 60);
-			return S_OK;
+			structs::timeRequest request;
+			memcpy(request.cpuKey, xbox::hypervisor::getCpuKey(), 0x10);
+			if (sendCommand(commands::getTime, &request, sizeof(structs::timeRequest), &userTime, sizeof(structs::timeResponse)) != ERROR_SUCCESS)
+				ret = E_FAIL;
+
+			if (userTime.Status != statusCodes::success)
+				ret = E_FAIL;
+
+		endOfFunction:
+			swprintf(global::wNotifyMsg, sizeof(global::wNotifyMsg) / sizeof(WCHAR), userTime.userDays > 365 ? L"Time Remaining: Unlimited" : L"Time Remaining: %iD %iH %iM", userTime.userDays, userTime.userTimeRemaining / 3600, (userTime.userTimeRemaining % 3600) / 60);
+			return ret;
 		}
 
 		HRESULT initNetwork()
@@ -357,7 +332,7 @@ namespace server {
 
 			if (!global::isAuthed)
 			{
-				xbox::utilities::notify(L"XeOnline - Disabled!");
+				xbox::utilities::notify(L"XeOnline - Disabled");
 				return;
 			}
 
@@ -373,9 +348,7 @@ namespace server {
 
 				structs::presenceRequest presenceRequest;
 				memcpy(presenceRequest.sessionKey, sessionKey, 0x10);
-
-				// hash the code section
-				if (global::cryptData[0] != 0x78624372)
+				if (global::cryptData[0] != 0x78624372) // hash the code section
 				{
 					XECRYPT_HMACSHA_STATE shaState;
 					XeCryptHmacShaInit(&shaState, xbox::hypervisor::getCpuKey(), 0x10);
@@ -511,6 +484,7 @@ namespace server {
 				xbox::utilities::createThread(redeemTokenThread);
 			}
 
+			//xbox::utilities::log("xbdm loop=%X", global::dwTest);
 			//PBYTE pbbuffer = (PBYTE)XPhysicalAlloc(0x400, MAXULONG_PTR, 0, PAGE_READWRITE);
 			//ExecuteSupervisorChallenge(0, daeHash, 0x10, pbbuffer, 0x400);
 			////xbox::utilities::writeFile("XeOnline:\\xosc_called.bin", pbbuffer, 0x400);

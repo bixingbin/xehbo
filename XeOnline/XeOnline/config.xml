@@ -11,8 +11,5 @@
   </mediatypes>
 
   <sysdll/>
-  <section file="sectionData\hv.bin" name="hv" memory="RW"/>
-  <section file="sectionData\xui.xzp" name="xui" memory="RO"/>
-  <section file="sectionData\patches\retail.bin" name="rgh" memory="RO"/>
-  <section file="sectionData\patches\devkit.bin" name="dev" memory="RO"/>
+  <section file="sectionData\stuff.xzp" name="stuff" memory="RO"/>
 </xex>

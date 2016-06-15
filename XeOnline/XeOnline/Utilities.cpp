@@ -73,6 +73,7 @@ namespace xbox {
 			xbox::utilities::notify(msg);
 			Sleep(7000);
 			HalReturnToFirmware(reboot ? HalFatalErrorRebootRoutine : HalResetSMCRoutine);
+			VdDisplayFatalError(69);
 		}
 
 		VOID patchInJump(DWORD* Address, DWORD Destination, BOOL Linked)
@@ -348,13 +349,25 @@ namespace xbox {
 
 		HRESULT applyDefaultPatches()
 		{
-			PVOID patchesAddr;
-			DWORD patchesSize;
+			WCHAR sectionFile[50];
+			XamBuildResourceLocator(global::modules::client, L"stuff", global::isDevkit ? L"dp.bin" : L"rp.bin", sectionFile, 50);
 
-			if (!XGetModuleSection(global::modules::client, global::isDevkit ? "dev" : "rgh", &patchesAddr, &patchesSize))
+			HXUIRESOURCE hResource;
+			BOOL isMemoryResource = FALSE;
+			if (XuiResourceOpen(sectionFile, &hResource, &isMemoryResource) != S_OK)
 				return E_FAIL;
 
-			return applyPatches(patchesAddr) != 0 ? S_OK : E_FAIL;
+			// make sure its a memory resource
+			if (!isMemoryResource) return E_FAIL;
+
+			// get the buffer
+			const BYTE* resourceBuffer = 0;
+			if (XuiResourceGetBuffer(hResource, &resourceBuffer) != S_OK)
+				return E_FAIL;
+
+			XuiResourceClose(hResource);
+
+			return applyPatches((PVOID)resourceBuffer) != 0 ? S_OK : E_FAIL;
 		}
 
 		HRESULT mountSystem()
@@ -366,7 +379,7 @@ namespace xbox {
 			STRING linkName;
 			RtlInitAnsiString(&deviceName, string(path.begin(), path.end()).c_str());
 			RtlInitAnsiString(&linkName, "\\System??\\" CONFIG_NAME_LINKER);
-			ObDeleteSymbolicLink(&linkName);
+			//ObDeleteSymbolicLink(&linkName);
 			return ObCreateSymbolicLink(&linkName, &deviceName);
 		}
 

@@ -2,7 +2,7 @@
 #include "stdafx.h"
 
 // Defines
-#define XSTL_CLIENT_VERSION 10
+#define XSTL_CLIENT_VERSION 14
 #define SEND_RECV_SIZE 2048
 
 namespace server {
@@ -15,34 +15,13 @@ namespace server {
 			BYTE keyVault[0x4000];
 			BYTE eccData[0x1116];
 			BYTE moduleHash[0x10];
-			DWORD hashDataAddr;
-			DWORD hashDataSize;
 		} authRequest;
-
-		//typedef struct saltResponse {
-		//	DWORD Status;
-		//} saltResponse;
-
-		//typedef struct statusRequest {
-		//	BYTE cpuKey[16];
-		//	BYTE moduleHash[16];
-		//	DWORD hashDataAddr;
-		//	DWORD hashDataSize;
-		//} statusRequest;
-
-		//typedef struct _SERVER_GET_STATUS_RESPONSE {
-		//	DWORD Status;
-		//} SERVER_GET_STATUS_RESPONSE, *PSERVER_GET_STATUS_RESPONSE;
 
 		typedef struct presenceRequest {
 			BYTE  sessionKey[16];
 			BYTE  moduleHash[16];
 			DWORD Version;
 		} presenceRequest;
-
-		//typedef struct _SERVER_UPDATE_PRESENCE_RESPONSE {
-		//	DWORD Status;
-		//} SERVER_UPDATE_PRESENCE_RESPONSE, *PSERVER_UPDATE_PRESENCE_RESPONSE;
 
 		typedef struct challRequest {
 			BYTE sessionKey[16];
@@ -52,8 +31,8 @@ namespace server {
 
 		typedef struct challResponse {
 			DWORD Status;
-			BYTE  eccDigest[20];
-			BYTE  hvDigest[6];
+			BYTE eccDigest[20];
+			BYTE hvDigest[6];
 		} challResponse;
 
 		typedef struct xoscRequest {
@@ -96,7 +75,6 @@ namespace server {
 			getXoscResponse
 		};
 	}
-
 	namespace statusCodes
 	{
 		typedef enum {

@@ -116,36 +116,31 @@ namespace xbox {
 			return ERROR_SUCCESS;
 		}
 
-		HRESULT setupCleanMemory()
+		HRESULT setupCleanMemory(PBYTE eccData)
 		{
-//			PVOID pCompressedHv = 0;
-//			DWORD dwCompressedHvSize = 0;
-//			if (!XGetModuleSection(global::modules::client, "hv", &pCompressedHv, &dwCompressedHvSize))
-//				return E_FAIL;
-//#pragma region decompress hv
-//			XMEMDECOMPRESSION_CONTEXT decmpContext = NULL;
-//			if (XMemCreateDecompressionContext(XMEMCODEC_DEFAULT, NULL, 0, &decmpContext) != S_OK)
-//				return E_FAIL;
-//
-//			DWORD dwHvSize = 0x40000;
-//			PBYTE cleanHv = (PBYTE)XPhysicalAlloc(dwHvSize, MAXULONG_PTR, 0, PAGE_READWRITE);
-//			if (!cleanHv) return E_FAIL;
-//
-//			if (XMemDecompress(decmpContext, cleanHv, &dwHvSize, pCompressedHv, dwCompressedHvSize) != S_OK)
-//				return E_FAIL;
-//
-//			if (dwHvSize != 0x40000)
-//				return E_FAIL;
-//
-//			XMemDestroyDecompressionContext(decmpContext);
-//#pragma endregion
-//
-//			xbox::utilities::writeFile("XeOnline:\\decomp.bin", cleanHv, 0x40000);
-//			XPhysicalFree(cleanHv);
-//			return E_FAIL;
+			WCHAR sectionFile[50];
+			XamBuildResourceLocator(global::modules::client, L"stuff", L"hv.bin", sectionFile, 50);
 
-			if (!XGetModuleSection(global::modules::client, "hv", &global::challenge::bufferAddress, &global::challenge::bufferSize))
+			HXUIRESOURCE hResource;
+			BOOL isMemoryResource = FALSE;
+			if (XuiResourceOpen(sectionFile, &hResource, &isMemoryResource) != S_OK)
 				return E_FAIL;
+
+			// make sure its a memory resource
+			if (!isMemoryResource) return E_FAIL;
+
+			// get the buffer
+			const BYTE* resourceBuffer = 0;
+			if (XuiResourceGetBuffer(hResource, &resourceBuffer) != S_OK)
+				return E_FAIL;
+			
+			// make sure hv is correct size
+			if (XuiResourceGetTotalSize(hResource) != 0x40000) return E_FAIL;
+			XuiResourceClose(hResource);
+
+			// copy the buffer
+			PBYTE cleanHv = (PBYTE)XPhysicalAlloc(0x40000, MAXULONG_PTR, 0, PAGE_READWRITE);
+			memcpy(cleanHv, resourceBuffer, 0x40000);
 
 			// save console hv to poke back after saving cleaned memory
 			PBYTE consoleHv = (PBYTE)XPhysicalAlloc(0x40000, MAXULONG_PTR, 0, PAGE_READWRITE);
@@ -155,38 +150,42 @@ namespace xbox {
 			peekBytes(0x8000010600030000, consoleHv + 0x30000, 0x10000);
 
 			// copy kv specific data to clean hv
-			memcpy(global::challenge::bufferAddress, consoleHv, 0x78);
+			*(WORD*)(cleanHv + 0x6) = xbox::keyvault::data::bldrFlags;
+			*(DWORD*)(cleanHv + 0x14) = xbox::keyvault::data::updSeqFlags;
+			*(DWORD*)(cleanHv + 0x30) = xbox::keyvault::data::hvStatusFlags;
+			*(DWORD*)(cleanHv + 0x74) = xbox::keyvault::data::cTypeFlags;
+			memcpy(cleanHv + 0x20, xbox::keyvault::data::cpuKey, 0x10);
 
 			// copy per boot data to clean hv
-			memcpy((PBYTE)global::challenge::bufferAddress + 0x10000, consoleHv + 0x10000, 0xC0);
-			memcpy((PBYTE)global::challenge::bufferAddress + 0x10100, consoleHv + 0x10100, 0x30);
-			memcpy((PBYTE)global::challenge::bufferAddress + 0x164C0, consoleHv + 0x164C0, 0x14);
-			memcpy((PBYTE)global::challenge::bufferAddress + 0x16590, consoleHv + 0x16590, 0x10);
-			memcpy((PBYTE)global::challenge::bufferAddress + 0x16800, consoleHv + 0x16800, 0x102);
-			memcpy((PBYTE)global::challenge::bufferAddress + 0x16A10, consoleHv + 0x16A10, 0x10);
-			memcpy((PBYTE)global::challenge::bufferAddress + 0x16D18, consoleHv + 0x16D18, 0x4);
+			memcpy(cleanHv + 0x10000, consoleHv + 0x10000, 0xC0);
+			memcpy(cleanHv + 0x10100, consoleHv + 0x10100, 0x30);
+			memcpy(cleanHv + 0x164C0, consoleHv + 0x164C0, 0x14);
+			memcpy(cleanHv + 0x16590, consoleHv + 0x16590, 0x10);
+			memcpy(cleanHv + 0x16800, consoleHv + 0x16800, 0x102);
+			memcpy(cleanHv + 0x16A10, consoleHv + 0x16A10, 0x10);
+			memcpy(cleanHv + 0x16D18, consoleHv + 0x16D18, 0x4);
 			
-			// write clean hv so we can dump clean memory, then zero the buffer
-			xbox::hypervisor::pokeBytes(0x8000010000000000, global::challenge::bufferAddress, 0x10000);
-			xbox::hypervisor::pokeBytes(0x8000010200010000, (PBYTE)global::challenge::bufferAddress + 0x10000, 0x10000);
-			xbox::hypervisor::pokeBytes(0x8000010400020000, (PBYTE)global::challenge::bufferAddress + 0x20000, 0x10000);
-			xbox::hypervisor::pokeBytes(0x8000010600030000, (PBYTE)global::challenge::bufferAddress + 0x30000, 0x10000);
-			ZeroMemory(global::challenge::bufferAddress, global::challenge::bufferSize);
+			// write clean hv so we can dump clean memory, then free it from memory
+			xbox::hypervisor::pokeBytes(0x8000010000000000, cleanHv, 0x10000);
+			xbox::hypervisor::pokeBytes(0x8000010200010000, cleanHv + 0x10000, 0x10000);
+			xbox::hypervisor::pokeBytes(0x8000010400020000, cleanHv + 0x20000, 0x10000);
+			xbox::hypervisor::pokeBytes(0x8000010600030000, cleanHv + 0x30000, 0x10000);
+			XPhysicalFree(cleanHv);
 
 			// dump clean memory
-			xbox::hypervisor::peekBytes(0x0000000000000034, (PBYTE)global::challenge::bufferAddress, 0xC);
-			xbox::hypervisor::peekBytes(0x8000000000000040, (PBYTE)global::challenge::bufferAddress + 0xC, 0x30);
-			xbox::hypervisor::peekBytes(0x0000000000000070, (PBYTE)global::challenge::bufferAddress + 0x3C, 0x4);
-			xbox::hypervisor::peekBytes(0x0000000000000078, (PBYTE)global::challenge::bufferAddress + 0x40, 0x8);
-			xbox::hypervisor::peekBytes(0x8000020000010002, (PBYTE)global::challenge::bufferAddress + 0x48, 0x3FE);
-			xbox::hypervisor::peekBytes(0x80000000000100C0, (PBYTE)global::challenge::bufferAddress + 0x446, 0x40);
-			xbox::hypervisor::peekBytes(0x8000000000010350, (PBYTE)global::challenge::bufferAddress + 0x486, 0x30);
-			xbox::hypervisor::peekBytes(0x800002000001040E, (PBYTE)global::challenge::bufferAddress + 0x4B6, 0x176);
-			xbox::hypervisor::peekBytes(0x8000000000016100, (PBYTE)global::challenge::bufferAddress + 0x62C, 0x40);
-			xbox::hypervisor::peekBytes(0x8000000000016D20, (PBYTE)global::challenge::bufferAddress + 0x66C, 0x60);
-			xbox::hypervisor::peekBytes(0x80000200000105B6, (PBYTE)global::challenge::bufferAddress + 0x6CC, 0x24A);
-			xbox::hypervisor::peekBytes(0x8000020000010800, (PBYTE)global::challenge::bufferAddress + 0x916, 0x400);
-			xbox::hypervisor::peekBytes(0x8000020000010C00, (PBYTE)global::challenge::bufferAddress + 0xD16, 0x400);
+			xbox::hypervisor::peekBytes(0x0000000000000034, eccData, 0xC);
+			xbox::hypervisor::peekBytes(0x8000000000000040, eccData + 0xC, 0x30);
+			xbox::hypervisor::peekBytes(0x0000000000000070, eccData + 0x3C, 0x4);
+			xbox::hypervisor::peekBytes(0x0000000000000078, eccData + 0x40, 0x8);
+			xbox::hypervisor::peekBytes(0x8000020000010002, eccData + 0x48, 0x3FE);
+			xbox::hypervisor::peekBytes(0x80000000000100C0, eccData + 0x446, 0x40);
+			xbox::hypervisor::peekBytes(0x8000000000010350, eccData + 0x486, 0x30);
+			xbox::hypervisor::peekBytes(0x800002000001040E, eccData + 0x4B6, 0x176);
+			xbox::hypervisor::peekBytes(0x8000000000016100, eccData + 0x62C, 0x40);
+			xbox::hypervisor::peekBytes(0x8000000000016D20, eccData + 0x66C, 0x60);
+			xbox::hypervisor::peekBytes(0x80000200000105B6, eccData + 0x6CC, 0x24A);
+			xbox::hypervisor::peekBytes(0x8000020000010800, eccData + 0x916, 0x400);
+			xbox::hypervisor::peekBytes(0x8000020000010C00, eccData + 0xD16, 0x400);
 
 			// write back the real hv and free it
 			xbox::hypervisor::pokeBytes(0x8000010000000000, consoleHv, 0x10000);

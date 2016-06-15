@@ -1,6 +1,10 @@
 #pragma once
 
 #include <xtl.h>
+#include <string>
+#include <sstream>
+#include <iostream>
+#include <iomanip>
 #include <fstream>
 #include <xkelib.h>
 #include <xui.h>
@@ -38,15 +42,13 @@ namespace global {
 	extern BOOL isAuthed;
 	extern DWORD supportedVersion;
 	extern WCHAR wNotifyMsg[100];
+	extern DWORD dwTest;
 	//extern CRYPT_DATA cryptData;
 	extern DWORD cryptData[6];
 
 	namespace challenge {
-		extern PVOID bufferAddress;
-		extern DWORD bufferSize;
 		extern BOOL hasChallenged;
 		extern XEX_EXECUTION_ID executionId;
-		extern XECRYPT_SHA_STATE xShaCurrentXex;
 	}
 
 	namespace modules {

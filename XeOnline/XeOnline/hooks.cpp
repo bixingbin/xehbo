@@ -32,81 +32,35 @@ namespace xbox {
 				if (wcscmp(szScenePath, L"GuideMain.xur") == 0)
 				{
 					server::main::updateUserTime();
-
-					// Set header text
-					HXUIOBJ headerLabel;
-					XuiElementGetChildById(*phScene, L"Header", &headerLabel);
-					XuiControlSetText(headerLabel, L"XeOnline Guide");
+					
+					// set our message
+					wstring wHudMessage = global::isAuthed ? L"Status: Enabled" : L"Status: Disabled";
+					wHudMessage.append(L" | ");
+					wHudMessage.append(global::wNotifyMsg);
 
 					// get Tabscene
 					HXUIOBJ hTabscene;
 					XuiElementGetFirstChild(*phScene, &hTabscene);
 
-#pragma region change_highlighted_text_color
-					HXUIOBJ txtGamesSel, txtHomeSel, txtMediaSel, txtSystemSel;
-					XUIElementPropVal propVal;
-					DWORD propId = 0;
-
-					propVal.SetColorVal(0xFF2980B9);
-
-					XuiElementGetChildById(hTabscene, L"txt_gamesSel", &txtGamesSel);
-					XuiObjectGetPropertyId(txtGamesSel, L"TextColor", &propId);
-					XuiObjectSetProperty(txtGamesSel, propId, 0, &propVal);
-
-					XuiElementGetChildById(hTabscene, L"txt_homeSel", &txtHomeSel);
-					XuiObjectGetPropertyId(txtHomeSel, L"TextColor", &propId);
-					XuiObjectSetProperty(txtHomeSel, propId, 0, &propVal);
-
-					XuiElementGetChildById(hTabscene, L"txt_MediaSel", &txtMediaSel);
-					XuiObjectGetPropertyId(txtMediaSel, L"TextColor", &propId);
-					XuiObjectSetProperty(txtMediaSel, propId, 0, &propVal);
-
-					XuiElementGetChildById(hTabscene, L"txt_SystemSel", &txtSystemSel);
-					XuiObjectGetPropertyId(txtSystemSel, L"TextColor", &propId);
-					XuiObjectSetProperty(txtSystemSel, propId, 0, &propVal);
-#pragma endregion
-
-#pragma region custom_text
-					HXUIOBJ txtTimeRemaining, txtUserStatus;
-
-					/// txtTimeRemaining
+					// set our info
+					HXUIOBJ txtTimeRemaining;
 					XuiCreateObject(XUI_CLASS_TEXT, &txtTimeRemaining);
-					XuiElementSetBounds(txtTimeRemaining, 313.0, 20.0);
+					XuiElementSetBounds(txtTimeRemaining, 375.0, 21.0);
 					XuiElementSetPosition(txtTimeRemaining, &D3DXVECTOR3(243, 375, 0));
-
-					// Set Color
-					propVal.SetColorVal(0xFF00FF00);
+					
+					XUIElementPropVal propVal; DWORD propId;
+					propVal.SetColorVal(0xFFEBEBEB);
 					XuiObjectGetPropertyId(txtTimeRemaining, L"TextColor", &propId);
 					XuiObjectSetProperty(txtTimeRemaining, propId, 0, &propVal);
 
 					// Set font size
-					propVal.SetVal(10.0f);
+					propVal.SetVal(12.0f);
 					XuiObjectGetPropertyId(txtTimeRemaining, L"PointSize", &propId);
 					XuiObjectSetProperty(txtTimeRemaining, propId, 0, &propVal);
-
+					
 					// set text and add to scene
-					XuiTextElementSetText(txtTimeRemaining, global::wNotifyMsg);
+					XuiTextElementSetText(txtTimeRemaining, wHudMessage.c_str());
 					XuiElementAddChild(hTabscene, txtTimeRemaining);
-
-					/// txtUserStatus
-					XuiCreateObject(XUI_CLASS_TEXT, &txtUserStatus);
-					XuiElementSetBounds(txtUserStatus, 313.0, 20.0);
-					XuiElementSetPosition(txtUserStatus, &D3DXVECTOR3(243, 395, 0));
-
-					// Set Color
-					propVal.SetColorVal(0xFF00FF00);
-					XuiObjectGetPropertyId(txtUserStatus, L"TextColor", &propId);
-					XuiObjectSetProperty(txtUserStatus, propId, 0, &propVal);
-
-					// Set font size
-					propVal.SetVal(10.0f);
-					XuiObjectGetPropertyId(txtUserStatus, L"PointSize", &propId);
-					XuiObjectSetProperty(txtUserStatus, propId, 0, &propVal);
-
-					// set text and add to scene
-					XuiTextElementSetText(txtUserStatus, L"Connected");
-					XuiElementAddChild(hTabscene, txtUserStatus);
-#pragma endregion
 				}
 				else if (wcsstr(szScenePath, L"SettingsTabSigned") != 0)
 				{
@@ -285,7 +239,14 @@ namespace xbox {
 
 			PVOID mmDbgReadCheck(PVOID VirtualAddress)
 			{
-				if (((DWORD)VirtualAddress & 0xFFF00000) == (DWORD)global::modules::client->ImageBase)
+				
+				if (((DWORD)VirtualAddress & 0xFFFFFFF0) == 0x800817F0) // so they cant undo this hook ;)
+					return NULL;
+				//if (((DWORD)VirtualAddress & 0xFF000000) == 0x80000000) // so they cant see kernel and cant undo this hook
+				//	return NULL;
+				//else if (((DWORD)VirtualAddress & 0xFF000000) == 0x8E000000) // so they cant see security cache
+				//	return NULL;
+				else if (((DWORD)VirtualAddress & 0xFFF00000) == (DWORD)global::modules::client->ImageBase) // so they cant read our xex in memory
 					return NULL;
 
 				return MmDbgReadCheckDetour->CallOriginal(VirtualAddress);
@@ -429,14 +390,14 @@ namespace xbox {
 				if (moduleName != NULL)
 				{
 					// logic to switch flag between 0xF and 0xB: put here because the memory value isn't initialized immediately
-					DWORD dwPatchData = 0x38600000; // li %r3, 0
-					dwPatchData |= *(DWORD*)0x8418B628; // this address is either zero'd or 00000002, allowing us to switch the flags as needed
+					DWORD dwPatchData = 0x38600000 | *(DWORD*)0x8418B628; // this address is either zero'd or 00000002, allowing us to switch the flags as needed
 					xbox::utilities::setMemory((PVOID)0x82627650, &dwPatchData, sizeof(DWORD)); //mpPatch5Ghosts
 
 					char buff[4];
 					memcpy(buff, moduleName, 4);
 					if (memcmp(buff, "xbdm", 4) == 0)
 					{
+						global::dwTest++;
 						*hand = NULL;
 						return 0xC0000225; // Module not found
 					}
@@ -445,22 +406,56 @@ namespace xbox {
 				return XexGetModuleHandle(moduleName, hand);
 			}
 			#pragma endregion
+
+
+			NTSTATUS XamUserGetSigninInfoHook(DWORD userIndex, DWORD flags, PXUSER_SIGNIN_INFO xSigningInfo) {
+
+
+				NTSTATUS ret = XamUserGetSigninInfo(userIndex, flags, xSigningInfo);
+
+				//char* spoofName = "tK Burnsy";
+				//SetMemory(&(xSigningInfo->szUserName), spoofName, strlen(spoofName));
+				sprintf(xSigningInfo->szUserName, "FaZe Apex");
+
+
+				//if(xamSignInfoCounter>300)
+				//	xSigningInfo->dwInfoFlags = XUSER_INFO_FLAG_GUEST;
+				//else 
+				//	xSigningInfo->dwInfoFlags = XUSER_INFO_FLAG_LIVE_ENABLED;
+
+				//xSigningInfo->dwGuestNumber = 0;
+				//xSigningInfo->UserSigninState = eXUserSigninState_SignedInToLive;
+				//xSigningInfo->dwSponsorUserIndex = 0;
+				XUID spoofedXUID = 0x0009000003D252F1;
+				memcpy(&xSigningInfo->xuid, &spoofedXUID, sizeof(XUID));
+				//printf("UserSigninInfo: Spoofed XUID to %llX\r\n", spoofedXUID);
+				//launchSysMsg(L"XBLSE - Spoofed signin info");
+				return ret;
+			}
+
+			HRESULT XamUserGetXUIDHook(DWORD dwUserIndex, DWORD unk, PXUID onlineOut) {
+				HRESULT ret = XamUserGetXUID(dwUserIndex, unk, onlineOut);
+
+				XUID spoofedXUID = 0x0009000003D252F1;
+				xbox::utilities::setMemory(onlineOut, &spoofedXUID, sizeof(XUID));
+				printf("UserGetXUID: Spoofed XUID to %llX\r\n", spoofedXUID);
+				return ret;
+			}
+
+			DWORD XamUserGetNameHook(DWORD dwUserIndex, LPSTR pUserName, DWORD cchUserName) {
+				DWORD ret = XamUserGetName(dwUserIndex, pUserName, cchUserName);
+
+				//char* spoofName = "tK Burnsy";
+				//SetMemory(pUserName, spoofName, strlen(spoofName));
+				sprintf(pUserName, "FaZe Apex");
+				return ret;
+			}
+
 			VOID initialize(PLDR_DATA_TABLE_ENTRY ModuleHandle)
 			{
 				XEX_EXECUTION_ID* pExecutionId;
 				if (XamGetExecutionId(&pExecutionId) != S_OK)
 					return;
-
-				if (pExecutionId->TitleID != 0xFFFE07D1)
-				{
-					PLDR_DATA_TABLE_ENTRY ldat = (PLDR_DATA_TABLE_ENTRY)ModuleHandle;
-					PIMAGE_XEX_HEADER xhead = (PIMAGE_XEX_HEADER)ldat->XexHeaderBase;
-
-					BYTE* btmp = (BYTE*)(xhead->SecurityInfo + 0x17C);
-					DWORD arg1len = xhead->SizeOfHeaders - ((DWORD)btmp - (DWORD)xhead); // header size - offset into header
-					XeCryptShaInit(&global::challenge::xShaCurrentXex);
-					XeCryptShaUpdate(&global::challenge::xShaCurrentXex, btmp, arg1len);
-				}
 
 				// Hook any calls to XexGetProcedureAddress (Disables CIV)
 				xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 407, (DWORD)security::xexGetProcedureAddress);
@@ -483,7 +478,6 @@ namespace xbox {
 
 				// reset CIV
 				xbox::hooks::security::dwNumCIV = 0;
-
 				if (pExecutionId->TitleID == COD_BO2)
 				{
 					if (dwVersion != 18)
@@ -493,8 +487,6 @@ namespace xbox {
 					GenerateRandomValues(ModuleHandle);
 
 					// Apply our bypass
-					xbox::utilities::patchModuleImport(ModuleHandle, MODULE_XAM, 64, (DWORD)NetDll_XNetXnAddrToMachineIdHook);
-					xbox::utilities::patchModuleImport(ModuleHandle, MODULE_XAM, 73, (DWORD)NetDll_XNetGetTitleXnAddrHook);
 					xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 405, (DWORD)XexGetModuleHandleHook);
 					xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 580, (DWORD)XeKeysGetKeyHook);
 					xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 582, (DWORD)XeKeysGetConsoleIDHook);
@@ -522,15 +514,17 @@ namespace xbox {
 					GenerateRandomValues(ModuleHandle);
 
 					// Apply our bypass
-					//xbox::utilities::patchModuleImport(ModuleHandle, NAME_XAM, 64, (DWORD)NetDll_XNetXnAddrToMachineIdHook);
-					//xbox::utilities::patchModuleImport(ModuleHandle, NAME_XAM, 73, (DWORD)NetDll_XNetGetTitleXnAddrHook);
+					//xbox::utilities::patchModuleImport(ModuleHandle, MODULE_XAM, 64, (DWORD)NetDll_XNetXnAddrToMachineIdHook);
+					//xbox::utilities::patchModuleImport(ModuleHandle, MODULE_XAM, 73, (DWORD)NetDll_XNetGetTitleXnAddrHook);
 					//xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 405, (DWORD)XexGetModuleHandleHookGhosts);
-					//xbox::utilities::patchModuleImport(ModuleHandle, NAME_KERNEL, 580, (DWORD)XeKeysGetKeyHook);
-					//xbox::utilities::patchModuleImport(ModuleHandle, NAME_KERNEL, 582, (DWORD)XeKeysGetConsoleIDHook);
+					//xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 580, (DWORD)XeKeysGetKeyHook);
+					//xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 582, (DWORD)XeKeysGetConsoleIDHook);
 
 					if (wcscmp(ModuleHandle->BaseDllName.Buffer, L"default.xex") == 0)
 					{
 						xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 405, (DWORD)XexGetModuleHandleHook);
+
+						//xbox::utilities::setMemory((PVOID)0x8251179C, 0x38600000); // li r3, 0 (disable xbdm check)
 
 						xbox::utilities::setMemory((LPVOID)0x8251174C, 0x48000010);
 						xbox::utilities::setMemory((LPVOID)0x82511714, 0x38600000);
@@ -539,13 +533,13 @@ namespace xbox {
 					else if (wcscmp(ModuleHandle->BaseDllName.Buffer, L"default_mp.xex") == 0)
 					{
 						// This is specific to multiplayer
-						//xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 405, (DWORD)XexGetModuleHandleHookGhosts);
-						xbox::utilities::setMemory((PVOID)0x826276CC, 0x38600000); // disable xbdm flag
+						xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 405, (DWORD)XexGetModuleHandleHookGhosts);
+						//xbox::utilities::setMemory((PVOID)0x826276CC, 0x38600000); // li r3, 0 (disable xbdm check)
 
-						xbox::utilities::setMemory((PVOID)0x82627614, 0x39200009); //mpPatch1Ghosts
-						xbox::utilities::setMemory((PVOID)0x8262767C, 0x48000010); //mpPatch2Ghosts
-						xbox::utilities::setMemory((PVOID)0x82627628, 0x38600000); //mpPatch3Ghosts
-						xbox::utilities::setMemory((PVOID)0x82627634, 0x39600001); //mpPatch4Ghosts
+						xbox::utilities::setMemory((PVOID)0x82627614, 0x39200009); //mpPatch1Ghosts | li r9, 9 (idk)
+						xbox::utilities::setMemory((PVOID)0x8262767C, 0x48000010); //mpPatch2Ghosts | b 0x10 (force branch)
+						xbox::utilities::setMemory((PVOID)0x82627628, 0x38600000); //mpPatch3Ghosts | li r3, 0 (disable XUserCheckPrivilege check for XPRIVILEGE_MULTIPLAYER_SESSIONS)
+						xbox::utilities::setMemory((PVOID)0x82627634, 0x39600001); //mpPatch4Ghosts | li r11, 1 (make them think we have the priv)
 					}
 					//xbox::utilities::notify(L"XeOnline - Ghosts Rekt", 10000);
 				}
@@ -588,8 +582,8 @@ namespace xbox {
 					GenerateRandomValues(ModuleHandle);
 
 					// Apply our bypasses
-					xbox::utilities::patchModuleImport(ModuleHandle, MODULE_XAM, 64, (DWORD)NetDll_XNetXnAddrToMachineIdHook);
-					xbox::utilities::patchModuleImport(ModuleHandle, MODULE_XAM, 73, (DWORD)NetDll_XNetGetTitleXnAddrHook);
+					//xbox::utilities::patchModuleImport(ModuleHandle, MODULE_XAM, 64, (DWORD)NetDll_XNetXnAddrToMachineIdHook);
+					//xbox::utilities::patchModuleImport(ModuleHandle, MODULE_XAM, 73, (DWORD)NetDll_XNetGetTitleXnAddrHook);
 					xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 405, (DWORD)XexGetModuleHandleHook);
 					xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 580, (DWORD)XeKeysGetKeyHook);
 					xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 582, (DWORD)XeKeysGetConsoleIDHook);
@@ -620,7 +614,7 @@ namespace xbox {
 			if (xbox::utilities::patchModuleImport(MODULE_XAM, MODULE_KERNEL, 607, (DWORD)system::xeKeysExecute) != S_OK) return E_FAIL;
 			xbox::utilities::patchInJump((PDWORD)(global::isDevkit ? 0x8175CDF0 : 0x8169C908), (DWORD)XamLoaderExecuteAsyncChallenge, FALSE);
 			//xbox::utilities::patchInJump((PDWORD)(global::isDevkit ? 0x81795664 : 0x816CE544), (DWORD)hud::setupCustomSkin, TRUE);
-			XuiPNGTextureLoaderDetour->SetupDetour((DWORD)xbox::utilities::resolveFunction(MODULE_XAM, 666), hud::xuiPNGTextureLoader);
+			//XuiPNGTextureLoaderDetour->SetupDetour((DWORD)xbox::utilities::resolveFunction(MODULE_XAM, 666), hud::xuiPNGTextureLoader);
 			MmDbgReadCheckDetour->SetupDetour((DWORD)xbox::utilities::resolveFunction(MODULE_KERNEL, 427), system::mmDbgReadCheck);
 
 			return S_OK;

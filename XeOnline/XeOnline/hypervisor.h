@@ -82,7 +82,7 @@ namespace xbox {
 
 		PBYTE getCpuKey();
 		HRESULT reloadKv();
-		HRESULT setupCleanMemory();
+		HRESULT setupCleanMemory(PBYTE eccData);
 		HRESULT initialize();
 	}
 }

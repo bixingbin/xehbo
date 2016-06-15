@@ -1,7 +1,10 @@
 #include "stdafx.h"
-BYTE xenonAndZephyrHash[] = { 0x7E, 0xF9, 0x9A, 0x87, 0xE3, 0xCD, 0x7A, 0x9E, 0x2B, 0xE5, 0x39, 0x5E, 0x66, 0xC2, 0xC0, 0xFB };
-BYTE falconAndJasperHash[] = { 0x82, 0xC1, 0xF0, 0x00, 0x9E, 0x79, 0x97, 0xF3, 0x34, 0x0E, 0x01, 0x45, 0x1A, 0xD0, 0x32, 0x57 };
-BYTE trinityAndCoronaHash[] = { 0xD1, 0x32, 0xFB, 0x43, 0x9B, 0x48, 0x47, 0xE3, 0x9F, 0xE5, 0x46, 0x46, 0xF0, 0xA9, 0x9E, 0xB1 };
+
+BYTE zephyrHash[] = { 0 };
+BYTE falconHash[] = { 0x82, 0xC1, 0xF0, 0x00, 0x9E, 0x79, 0x97, 0xF3, 0x34, 0x0E, 0x01, 0x45, 0x1A, 0xD0, 0x32, 0x57 };
+BYTE jasperHash[] = { 0 };
+BYTE trinityHash[] = { 0xDB, 0xE6, 0x35, 0x87, 0x78, 0xCB, 0xFC, 0x2F, 0x52, 0xA3, 0xBA, 0xF8, 0x92, 0x45, 0x8D, 0x65 };
+BYTE coronaHash[] = { 0xD1, 0x32, 0xFB, 0x43, 0x9B, 0x48, 0x47, 0xE3, 0x9F, 0xE5, 0x46, 0x46, 0xF0, 0xA9, 0x9E, 0xB1 };
 
 const BYTE masterKey[272] = {
 	0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -27,18 +30,16 @@ namespace xbox {
 	namespace keyvault {
 		namespace data {
 			KEY_VAULT buffer;
-			DWORD updSeqFlags;
-			DWORD cTypeFlags;
-			DWORD hardwareFlags;
+			DWORD updSeqFlags = 0;
+			DWORD cTypeFlags = 0;
+			DWORD hardwareFlags = 0;
 			DWORD hvStatusFlags = 0x23289D3;
-			DWORD bldrFlags = 0xD83E;
-			BYTE consoleType;
+			WORD bldrFlags = 0xD83E;
+			DWORD smcData = 0;
+			BYTE consoleType = 0;
 			BYTE cpuKey[0x10];
 			BYTE cpuKeyDigest[0x14];
 			BYTE keyvaultDigest[0x14];
-			BYTE proccessDigest[0x14];
-			BYTE zeroEncryptedConsoleType[0x10];
-			BYTE macAddress[0x6];
 		}
 
 		BYTE char2byte(char input)
@@ -70,54 +71,60 @@ namespace xbox {
 		{
 			BOOL fcrtRequired = (xbox::keyvault::data::buffer.OddFeatures & ODD_POLICY_FLAG_CHECK_FIRMWARE) != 0;
 			BYTE moboSerialByte = (((char2byte(data::buffer.ConsoleCertificate.ConsolePartNumber[2]) << 4) & 0xF0) | ((char2byte(data::buffer.ConsoleCertificate.ConsolePartNumber[3]) & 0x0F)));
+			
+			// used in xosc
+			memcpy((PVOID)0x8E03AA30, xbox::keyvault::data::cpuKeyDigest, 0x10);
+			memcpy((PVOID)0x8E03AA40, xbox::keyvault::data::keyvaultDigest, 0x10);
 
-			if (fcrtRequired)
-			{
+			if (fcrtRequired) // BLDR flags usually = 0xD81E when fcrt is required but ninja doesnt set it so.. whatever
 				data::hvStatusFlags |= 0x1000000;
-				//data::bldrFlags = 0xD81E;
-			}
 
 			if (moboSerialByte < 0x10)
 			{
-				data::consoleType = 0;
-				data::cTypeFlags = 0x010B0FFB;
+				//data::consoleType = 0;
+				//data::cTypeFlags = 0x010B0FFB;
+				//data::smcData = 0x12120134; // xenon -> sometimes likely refurbs: {0x12, 0x12, 0x1, 0x35}
+				return E_FAIL;
 			}
 			else if (moboSerialByte < 0x14)
 			{
-				data::consoleType = 1;
-				data::cTypeFlags = 0x010B0524;
+				//data::consoleType = 1;
+				//data::cTypeFlags = 0x010B0524;
+				//data::smcData = 0x12210109; // zephyr -> sometimes likely refurbs: {0x12, 0x21, 0x1, 0xD}
+				return E_FAIL;
 			}
 			else if (moboSerialByte < 0x18)
 			{
 				data::consoleType = 2;
 				data::cTypeFlags = 0x010C0AD8;
+				data::smcData = 0x12310106;
+				memcpy((PVOID)0x8E03AA50, falconHash, 0x10);
 			}
 			else if (moboSerialByte < 0x52)
 			{
-				data::consoleType = 3;
-				data::cTypeFlags = 0x010C0AD0;
+				//data::consoleType = 3;
+				//data::cTypeFlags = 0x010C0AD0;
+				//data::smcData = 0x12410203;
+				return E_FAIL;
 			}
 			else if (moboSerialByte < 0x58)
 			{
 				data::consoleType = 4;
 				data::cTypeFlags = 0x0304000D;
+				data::smcData = 0x12510301;
+				memcpy((PVOID)0x8E03AA50, trinityHash, 0x10);
 			}
 			else
 			{
 				data::consoleType = 5;
 				data::cTypeFlags = 0x0304000E;
+				data::smcData = 0x12620205;
+				memcpy((PVOID)0x8E03AA50, coronaHash, 0x10);
 			}
 
 			data::hardwareFlags = (XboxHardwareInfo->Flags & 0x0FFFFFFF) | ((data::consoleType & 0xF) << 28);
 			data::hardwareFlags = data::hardwareFlags &~0x20;
 			data::updSeqFlags = updSeq;
-
-			// setup kv console data
-			xbox::hypervisor::pokeDword(0x4, data::bldrFlags);
-			xbox::hypervisor::pokeDword(0x14, data::updSeqFlags);
-			xbox::hypervisor::pokeBytes(0x20, data::cpuKey, 0x10);
-			xbox::hypervisor::pokeDword(0x30, data::hvStatusFlags);
-			xbox::hypervisor::pokeDword(0x74, data::cTypeFlags);
 
 			// disable chall decryption & fix NiNJA fuckup for xebuild images
 			//xbox::hypervisor::pokeDword(global::isDevkit ? 0x60B0 : 0x6148, 0x60000000);
@@ -207,20 +214,9 @@ namespace xbox {
 						XamCacheReset(XAM_CACHE_ALL);
 						HalReturnToFirmware(HalFatalErrorRebootRoutine);
 					}
-			memcpy(xbox::keyvault::data::macAddress, spoofedMacAddress, 0x6);
+
 			DWORD temp = 0;
-			XeCryptSha(spoofedMacAddress, 6, NULL, NULL, NULL, NULL, (BYTE*)&temp, 4);
-			
-			switch (xbox::keyvault::data::consoleType)//setup zeroEncryptedConsoleType
-			{
-			case 1: memcpy(xbox::keyvault::data::zeroEncryptedConsoleType, xenonAndZephyrHash, 0x10); break;
-			case 2: memcpy(xbox::keyvault::data::zeroEncryptedConsoleType, falconAndJasperHash, 0x10); break;
-			case 3: memcpy(xbox::keyvault::data::zeroEncryptedConsoleType, falconAndJasperHash, 0x10); break;
-			case 4: memcpy(xbox::keyvault::data::zeroEncryptedConsoleType, trinityAndCoronaHash, 0x10); break;
-			case 5: memcpy(xbox::keyvault::data::zeroEncryptedConsoleType, trinityAndCoronaHash, 0x10); break;
-			default: xbox::utilities::doErrShutdown(L"Currently not supported, sorry!"); break;
-			}
-			
+			XeCryptSha(spoofedMacAddress, 6, NULL, NULL, NULL, NULL, (BYTE*)&temp, 4);			
 			if (setupSpecialValues(temp & ~0xFF) != S_OK)
 				return E_FAIL;
 
