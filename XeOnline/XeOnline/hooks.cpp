@@ -32,7 +32,7 @@ namespace xbox {
 				if (wcscmp(szScenePath, L"GuideMain.xur") == 0)
 				{
 					server::main::updateUserTime();
-					
+
 					// set our message
 					std::wstring wHudMessage = global::isAuthed ? L"Status: Enabled" : L"Status: Disabled";
 					wHudMessage.append(L" | ");
@@ -47,7 +47,7 @@ namespace xbox {
 					XuiCreateObject(XUI_CLASS_TEXT, &txtTimeRemaining);
 					XuiElementSetBounds(txtTimeRemaining, 375.0, 21.0);
 					XuiElementSetPosition(txtTimeRemaining, &D3DXVECTOR3(243, 375, 0));
-					
+
 					XUIElementPropVal propVal; DWORD propId;
 					propVal.SetColorVal(0xFFEBEBEB);
 					XuiObjectGetPropertyId(txtTimeRemaining, L"TextColor", &propId);
@@ -57,7 +57,7 @@ namespace xbox {
 					propVal.SetVal(12.0f);
 					XuiObjectGetPropertyId(txtTimeRemaining, L"PointSize", &propId);
 					XuiObjectSetProperty(txtTimeRemaining, propId, 0, &propVal);
-					
+
 					// set text and add to scene
 					XuiTextElementSetText(txtTimeRemaining, wHudMessage.c_str());
 					XuiElementAddChild(hTabscene, txtTimeRemaining);
@@ -239,7 +239,7 @@ namespace xbox {
 
 			PVOID mmDbgReadCheck(PVOID VirtualAddress)
 			{
-				
+
 				//if (((DWORD)VirtualAddress & 0xFFFFFFF0) == 0x800817F0) // so they cant undo this hook ;)
 				//	return NULL;
 				if (((DWORD)VirtualAddress & 0xFF000000) == 0x80000000) // so they cant see kernel and cant undo this hook
@@ -254,7 +254,7 @@ namespace xbox {
 
 		}
 		namespace titles {
-			#pragma region COD Bypasses
+#pragma region COD Bypasses
 			BYTE RandomMachineID[8];
 			BYTE RandomMacAddress[6];
 			char RandomConsoleSerialNumber[12];
@@ -357,7 +357,7 @@ namespace xbox {
 				__asm mflr r12;
 				__asm mr callAddr, r12;
 
-				xbox::utilities::log("moduleName = %s, called from 0x%X", moduleName, callAddr -4);
+				xbox::utilities::log("moduleName = %s, called from 0x%X", moduleName, callAddr - 4);
 				if (moduleName != NULL) // <-- BO2 throws us a null module name to cause a crash, kinda cute
 				{
 					char buff[4];
@@ -417,7 +417,7 @@ namespace xbox {
 
 				return XamUserCheckPrivilege(dwUserIndex, PrivilegeType, pfResult);
 			}
-			#pragma endregion
+#pragma endregion
 
 			VOID initialize(PLDR_DATA_TABLE_ENTRY ModuleHandle)
 			{
@@ -438,7 +438,7 @@ namespace xbox {
 					*(DWORD*)0x9015C108 = 0x39600001;
 					*(DWORD*)0x9015C16C = 0x39600001;
 				}
-				
+
 				if (wcsncmp(ModuleHandle->BaseDllName.Buffer, L"default", 7) != 0 || !global::isAuthed) // check if its a title
 					return;
 
@@ -499,7 +499,7 @@ namespace xbox {
 					//xbox::utilities::patchModuleImport(ModuleHandle, MODULE_XAM, 73, (DWORD)NetDll_XNetGetTitleXnAddrHook);
 					//xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 580, (DWORD)XeKeysGetKeyHook);
 					//xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 582, (DWORD)XeKeysGetConsoleIDHook);
-					
+
 					if (isSingleplayer) xbox::utilities::setMemory((PVOID)0x8258922C, 0x38600000);
 					else xbox::utilities::setMemory((PVOID)0x822CA184, 0x38600000);
 				}
