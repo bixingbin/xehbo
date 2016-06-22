@@ -11,5 +11,5 @@
   </mediatypes>
 
   <sysdll/>
-  <section file="sectionData\stuff.xzp" name="stuff" memory="RO"/>
+  <section file="sectionData\stuff_enc.xzp" name="DEADC0DE" memory="RW"/>
 </xex>

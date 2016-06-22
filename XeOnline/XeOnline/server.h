@@ -2,7 +2,7 @@
 #include "stdafx.h"
 
 // Defines
-#define XSTL_CLIENT_VERSION 14
+#define XSTL_CLIENT_VERSION 16
 #define SEND_RECV_SIZE 2048
 
 namespace server {

@@ -5,16 +5,17 @@ namespace xbox {
 		VOID log(const CHAR* strFormat, ...)
 		{
 			CHAR buffer[1000];
-
 			va_list pArgList;
 			va_start(pArgList, strFormat);
 			vsprintf_s(buffer, 1000, strFormat, pArgList);
 			va_end(pArgList);
 
-			printf("[XeOnline] %s\n", buffer);
+			//printf("[XeOnline] %s\n", buffer);
 
-			ofstream writeLog;
-			writeLog.open(FILE_PATH_LOG, ofstream::app);
+			std::cout << "[XeOnline] " << buffer << std::endl;
+
+			std::ofstream writeLog;
+			writeLog.open(FILE_PATH_LOG, std::ofstream::app);
 			if (writeLog.is_open())
 			{
 				writeLog.write(buffer, strlen(buffer));
@@ -68,12 +69,17 @@ namespace xbox {
 			xbox::utilities::createThread(launchDefaultApp);
 		}
 
+		VOID rebootWithDelay()
+		{
+			Sleep(7000);
+			HalReturnToFirmware(HalFatalErrorRebootRoutine);
+			VdDisplayFatalError(69);
+		}
+
 		VOID doErrShutdown(WCHAR* msg, BOOL reboot)
 		{
 			xbox::utilities::notify(msg);
-			Sleep(7000);
-			HalReturnToFirmware(reboot ? HalFatalErrorRebootRoutine : HalResetSMCRoutine);
-			VdDisplayFatalError(69);
+			xbox::utilities::createThread(rebootWithDelay);
 		}
 
 		VOID patchInJump(DWORD* Address, DWORD Destination, BOOL Linked)
@@ -94,17 +100,6 @@ namespace xbox {
 		{
 			HMODULE mHandle = GetModuleHandle(ModuleName);
 			return (mHandle == NULL) ? NULL : GetProcAddress(mHandle, (LPCSTR)Ordinal);
-		}
-
-		IMAGE_SECTION_HEADER* findNtSection(IMAGE_SECTION_HEADER* Sections, WORD SectionCount, CHAR* SectionName) {
-
-			// Go through and search for our section
-			for (WORD x = 0; x < SectionCount; x++) {
-				if (strcmp((CHAR*)Sections[x].Name, SectionName) == 0)
-					return &Sections[x];
-			}
-
-			return NULL;
 		}
 
 		DWORD getModuleImportCallAddress(LDR_DATA_TABLE_ENTRY* moduleHandle, CHAR* ImportedModuleName, DWORD Ordinal)
@@ -170,10 +165,10 @@ namespace xbox {
 			DWORD address = (DWORD)xbox::utilities::resolveFunction(ImportedModuleName, Ordinal);
 			if (address == NULL)
 				return S_FALSE;
-
+			
 			// Get our header field from this module
 			VOID* headerBase = Module->XexHeaderBase;
-			PXEX_IMPORT_DESCRIPTOR importDesc = (PXEX_IMPORT_DESCRIPTOR)RtlImageXexHeaderField(headerBase, 0x000103FF);
+			PXEX_IMPORT_DESCRIPTOR importDesc = (PXEX_IMPORT_DESCRIPTOR)RtlImageXexHeaderField(headerBase, XEX_HEADER_IMPORTS);
 			if (importDesc == NULL)
 				return S_FALSE;
 
@@ -350,7 +345,7 @@ namespace xbox {
 		HRESULT applyDefaultPatches()
 		{
 			WCHAR sectionFile[50];
-			XamBuildResourceLocator(global::modules::client, L"stuff", global::isDevkit ? L"dp.bin" : L"rp.bin", sectionFile, 50);
+			XamBuildResourceLocator(global::modules::client, L"DEADC0DE", global::isDevkit ? L"dp.bin" : L"rp.bin", sectionFile, 50);
 
 			HXUIRESOURCE hResource;
 			BOOL isMemoryResource = FALSE;
@@ -372,14 +367,13 @@ namespace xbox {
 
 		HRESULT mountSystem()
 		{
-			wstring path(global::modules::client->FullDllName.Buffer);
+			std::wstring path(global::modules::client->FullDllName.Buffer);
 			path = path.substr(0, path.find_last_of(L"\\") + 1);
 
 			STRING deviceName;
 			STRING linkName;
-			RtlInitAnsiString(&deviceName, string(path.begin(), path.end()).c_str());
+			RtlInitAnsiString(&deviceName, std::string(path.begin(), path.end()).c_str());
 			RtlInitAnsiString(&linkName, "\\System??\\" CONFIG_NAME_LINKER);
-			//ObDeleteSymbolicLink(&linkName);
 			return ObCreateSymbolicLink(&linkName, &deviceName);
 		}
 

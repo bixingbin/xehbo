@@ -312,6 +312,13 @@ namespace server {
 
 		VOID presenceThread()
 		{
+			while (!XamIsCurrentTitleDash())
+				Sleep(0);
+
+			Sleep(3000);
+			
+			xbox::utilities::log("isd=%X", xbox::utilities::callRemoteFunction((DWORD)xbox::utilities::resolveFunction(MODULE_XAM, 462)));
+
 			for (int i = 0; i < 10; i++)
 			{
 				if (initNetwork() == S_OK)
@@ -321,8 +328,6 @@ namespace server {
 
 				Sleep(1000);
 			}
-
-			Sleep(10 * 1000);
 
 			if (xbox::utilities::isNotifyMsgSet())
 			{
@@ -338,7 +343,6 @@ namespace server {
 
 			xbox::utilities::notify(L"XeOnline - Connected!");
 			xbox::utilities::setLiveBlock(FALSE);
-
 			while (!global::challenge::hasChallenged)
 				Sleep(0);
 

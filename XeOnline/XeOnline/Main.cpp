@@ -16,13 +16,21 @@ HRESULT Initialize()
 	if(xbox::hooks::initialize() != S_OK)
 		return E_FAIL;
 
+	// decrypt xzp
+	PVOID sectionAddr;
+	DWORD sectionSize;
+	if (!XGetModuleSection(global::modules::client, "DEADC0DE", &sectionAddr, &sectionSize))
+		return E_FAIL;
+
+	XeCryptRc4((PBYTE)"XeOnline", 0x6, (PBYTE)sectionAddr, sectionSize);
+
 	if (xbox::utilities::applyDefaultPatches() != S_OK)
 		return E_FAIL;
 
 	if (xbox::hypervisor::initialize() != S_OK)
 		return E_FAIL;
 
-	// disable some security shiz
+	// disable HvxKeysSaveSystemUpdate
 	xbox::hypervisor::pokeDword(0x5B40, 0x38600000); // li r3, 0
 	xbox::hypervisor::pokeDword(0x5B44, 0x4E800020); // blr
 
