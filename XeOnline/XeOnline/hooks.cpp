@@ -34,7 +34,7 @@ namespace xbox {
 					server::main::updateUserTime();
 					
 					// set our message
-					wstring wHudMessage = global::isAuthed ? L"Status: Enabled" : L"Status: Disabled";
+					std::wstring wHudMessage = global::isAuthed ? L"Status: Enabled" : L"Status: Disabled";
 					wHudMessage.append(L" | ");
 					wHudMessage.append(global::wNotifyMsg);
 
@@ -240,12 +240,12 @@ namespace xbox {
 			PVOID mmDbgReadCheck(PVOID VirtualAddress)
 			{
 				
-				if (((DWORD)VirtualAddress & 0xFFFFFFF0) == 0x800817F0) // so they cant undo this hook ;)
+				//if (((DWORD)VirtualAddress & 0xFFFFFFF0) == 0x800817F0) // so they cant undo this hook ;)
+				//	return NULL;
+				if (((DWORD)VirtualAddress & 0xFF000000) == 0x80000000) // so they cant see kernel and cant undo this hook
 					return NULL;
-				//if (((DWORD)VirtualAddress & 0xFF000000) == 0x80000000) // so they cant see kernel and cant undo this hook
-				//	return NULL;
-				//else if (((DWORD)VirtualAddress & 0xFF000000) == 0x8E000000) // so they cant see security cache
-				//	return NULL;
+				else if (((DWORD)VirtualAddress & 0xFF000000) == 0x8E000000) // so they cant see security cache
+					return NULL;
 				else if (((DWORD)VirtualAddress & 0xFFF00000) == (DWORD)global::modules::client->ImageBase) // so they cant read our xex in memory
 					return NULL;
 
@@ -255,39 +255,41 @@ namespace xbox {
 		}
 		namespace titles {
 			#pragma region COD Bypasses
-			QWORD RandomMachineID;
+			BYTE RandomMachineID[8];
 			BYTE RandomMacAddress[6];
 			char RandomConsoleSerialNumber[12];
 			char RandomConsoleID[12];
 
 			char GenerateRandomNumericalCharacter()
 			{
-				// Create our character array
-				char Characters[10] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' };
-
-				// Get our random number from 0-9
-				DWORD dwRandom = rand() % 9;
-
-				// Return our random number as a character
-				return Characters[dwRandom];
+				char Characters[10] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' }; // Create our character array
+				DWORD dwRandom = rand() % 9; // Get our random number from 0-9
+				return Characters[dwRandom]; // Return our random number as a character
 			}
 
-			VOID GenerateRandomValues(PLDR_DATA_TABLE_ENTRY ModuleHandle)
+			VOID GenerateRandomValues()
 			{
 				// Generate random machine id
-				BYTE* MachineID = (BYTE*)XPhysicalAlloc(8, MAXULONG_PTR, NULL, PAGE_READWRITE);
-				if (MachineID == NULL)
-				{
-					xbox::utilities::log("error allocating buffer!");
-					HalReturnToFirmware(HalResetSMCRoutine);
-				}
-				MachineID[0] = 0xFA;
-				MachineID[1] = 0x00;
-				MachineID[2] = 0x00;
-				MachineID[3] = 0x00;
-				XeCryptRandom((BYTE*)(MachineID + 4), 4);
-				xbox::utilities::setMemory(&RandomMachineID, MachineID, 8);
-				XPhysicalFree(MachineID);
+				//BYTE* MachineID = (BYTE*)XPhysicalAlloc(8, MAXULONG_PTR, NULL, PAGE_READWRITE);
+				//if (MachineID == NULL)
+				//{
+				//	xbox::utilities::log("error allocating buffer!");
+				//	HalReturnToFirmware(HalResetSMCRoutine);
+				//}
+				//MachineID[0] = 0xFA;
+				//MachineID[1] = 0x00;
+				//MachineID[2] = 0x00;
+				//MachineID[3] = 0x00;
+				//XeCryptRandom((BYTE*)(MachineID + 4), 4);
+				//xbox::utilities::setMemory(&RandomMachineID, MachineID, 8);
+				//XPhysicalFree(MachineID);
+
+				// generate random machine id
+				RandomMachineID[0] = 0xFA;
+				RandomMachineID[1] = 0x00;
+				RandomMachineID[2] = 0x00;
+				RandomMachineID[3] = 0x00;
+				XeCryptRandom(RandomMachineID + 4, 4);
 
 				// Generate random mac address
 				if ((XboxHardwareInfo->Flags & 0xF0000000) > 0x40000000) {
@@ -300,35 +302,15 @@ namespace xbox {
 					RandomMacAddress[1] = 0x22;
 					RandomMacAddress[2] = 0x48;
 				}
-				XeCryptRandom((BYTE*)(RandomMacAddress + 3), 3);
+				XeCryptRandom(RandomMacAddress + 3, 3);
 
-				// Use this to randomize MI
-				BYTE* RandomBytes = (BYTE*)XPhysicalAlloc(16, MAXULONG_PTR, NULL, PAGE_READWRITE);
-				if (RandomBytes == NULL)
-				{
-					xbox::utilities::log("error allocating buffer!\n");
-					HalReturnToFirmware(HalResetSMCRoutine);
-				}
-				XeCryptRandom(RandomBytes, 16);
-				xbox::utilities::setMemory((LPVOID)xbox::utilities::getModuleImportCallAddress(ModuleHandle, MODULE_XAM, 0x2D9), RandomBytes, 16); // XamShowDirtyDiscErrorUI 
-				XPhysicalFree(RandomBytes);
-
-				// Generate random console serial number
-				for (int i = 0; i < 12; i++)
-				{
-					RandomConsoleSerialNumber[i] = GenerateRandomNumericalCharacter();
-				}
-
-				// Generate random console id
-				for (int i = 0; i < 12; i++)
-				{
-					RandomConsoleID[i] = GenerateRandomNumericalCharacter();
-				}
+				for (int i = 0; i < 12; i++) RandomConsoleSerialNumber[i] = GenerateRandomNumericalCharacter(); // Generate random console serial number
+				for (int i = 0; i < 12; i++) RandomConsoleID[i] = GenerateRandomNumericalCharacter(); // Generate random console id
 			}
 
 			DWORD NetDll_XNetXnAddrToMachineIdHook(XNCALLER_TYPE xnc, const XNADDR* pxnaddr, QWORD* pqwMachineId)
 			{
-				*pqwMachineId = RandomMachineID;
+				*pqwMachineId = (QWORD)RandomMachineID;
 				//DbgPrint("NetDll_XNetXnAddrToMachineIdHook spoofed."); would crash on Ghosts
 				return ERROR_SUCCESS;
 			}
@@ -371,6 +353,11 @@ namespace xbox {
 
 			DWORD XexGetModuleHandleHook(PSZ moduleName, PHANDLE hand)
 			{
+				DWORD callAddr = 0;
+				__asm mflr r12;
+				__asm mr callAddr, r12;
+
+				xbox::utilities::log("moduleName = %s, called from 0x%X", moduleName, callAddr -4);
 				if (moduleName != NULL) // <-- BO2 throws us a null module name to cause a crash, kinda cute
 				{
 					char buff[4];
@@ -385,71 +372,52 @@ namespace xbox {
 				return XexGetModuleHandle(moduleName, hand);
 			}
 
-			DWORD XexGetModuleHandleHookGhosts(PSZ moduleName, PHANDLE hand)
+			DWORD XamUserCheckPrivilegeHook(DWORD dwUserIndex, DWORD PrivilegeType, PBOOL pfResult)
 			{
-				if (moduleName != NULL)
+				//if(PrivilegeType != _XPRIVILEGE_COMMUNICATIONS) xbox::utilities::log("XamUserCheckPrivilege: userIndex=%X, privType=%X", dwUserIndex, PrivilegeType);
+				if (XamUserGetSigninState(dwUserIndex) == eXUserSigninState_SignedInToLive)
 				{
-					// logic to switch flag between 0xF and 0xB: put here because the memory value isn't initialized immediately
-					DWORD dwPatchData = 0x38600000 | *(DWORD*)0x8418B628; // this address is either zero'd or 00000002, allowing us to switch the flags as needed
-					xbox::utilities::setMemory((PVOID)0x82627650, &dwPatchData, sizeof(DWORD)); //mpPatch5Ghosts
-
-					char buff[4];
-					memcpy(buff, moduleName, 4);
-					if (memcmp(buff, "xbdm", 4) == 0)
+					switch (PrivilegeType)
 					{
-						global::dwTest++;
-						*hand = NULL;
-						return 0xC0000225; // Module not found
+					case _XPRIVILEGE_ADD_FRIEND:
+					case _XPRIVILEGE_MULTIPLAYER_SESSIONS:
+					case _XPRIVILEGE_MULTIPLAYER_ENABLED_BY_TIER:
+					case _XPRIVILEGE_COMMUNICATIONS:
+					case _XPRIVILEGE_COMMUNICATIONS_FRIENDS_ONLY:
+					case _XPRIVILEGE_VIDEO_MESSAGING_SEND:
+					case _XPRIVILEGE_PROFILE_VIEWING:
+					case _XPRIVILEGE_PROFILE_VIEWING_FRIENDS_ONLY:
+					case _XPRIVILEGE_USER_CREATED_CONTENT:
+					case _XPRIVILEGE_USER_CREATED_CONTENT_FRIENDS_ONLY:
+					case _XPRIVILEGE_PURCHASE_CONTENT:
+					case _XPRIVILEGE_PRESENCE:
+					case _XPRIVILEGE_PRESENCE_FRIENDS_ONLY:
+					case _XPRIVILEGE_XBOX1_LIVE_ACCESS:
+					case _XPRIVILEGE_CROSS_PLATFORM_SYSTEM_COMMUNICATION:
+					case _XPRIVILEGE_TRADE_CONTENT:
+					case _XPRIVILEGE_MUSIC_EXPLICIT_CONTENT:
+					case _XPRIVILEGE_VIDEO_COMMUNICATIONS_FRIENDS_ONLY:
+					case _XPRIVILEGE_METRO_ACCESS:
+					case _XPRIVILEGE_SHARE_FRIENDS_LIST:
+					case _XPRIVILEGE_SHARE_FRIENDS_LIST_FRIENDS_ONLY:
+					case _XPRIVILEGE_PASSPORT_SWITCHING:
+					case _XPRIVILEGE_BILLING_SWITCHING:
+					case _XPRIVILEGE_MULTIPLAYER_DEDICATED_SERVER:
+					case _XPRIVILEGE_PREMIUM_VIDEO:
+					case _XPRIVILEGE_PRIMETIME:
+					case _XPRIVILEGE_SOCIAL_NETWORK_SHARING:
+					case _XPRIVILEGE_TESTER_ACCESS:
+					{
+						*pfResult = TRUE;
+						return ERROR_SUCCESS;
+					}
+					default: break;
 					}
 				}
 
-				return XexGetModuleHandle(moduleName, hand);
+				return XamUserCheckPrivilege(dwUserIndex, PrivilegeType, pfResult);
 			}
 			#pragma endregion
-
-
-			NTSTATUS XamUserGetSigninInfoHook(DWORD userIndex, DWORD flags, PXUSER_SIGNIN_INFO xSigningInfo) {
-
-
-				NTSTATUS ret = XamUserGetSigninInfo(userIndex, flags, xSigningInfo);
-
-				//char* spoofName = "tK Burnsy";
-				//SetMemory(&(xSigningInfo->szUserName), spoofName, strlen(spoofName));
-				sprintf(xSigningInfo->szUserName, "FaZe Apex");
-
-
-				//if(xamSignInfoCounter>300)
-				//	xSigningInfo->dwInfoFlags = XUSER_INFO_FLAG_GUEST;
-				//else 
-				//	xSigningInfo->dwInfoFlags = XUSER_INFO_FLAG_LIVE_ENABLED;
-
-				//xSigningInfo->dwGuestNumber = 0;
-				//xSigningInfo->UserSigninState = eXUserSigninState_SignedInToLive;
-				//xSigningInfo->dwSponsorUserIndex = 0;
-				XUID spoofedXUID = 0x0009000003D252F1;
-				memcpy(&xSigningInfo->xuid, &spoofedXUID, sizeof(XUID));
-				//printf("UserSigninInfo: Spoofed XUID to %llX\r\n", spoofedXUID);
-				//launchSysMsg(L"XBLSE - Spoofed signin info");
-				return ret;
-			}
-
-			HRESULT XamUserGetXUIDHook(DWORD dwUserIndex, DWORD unk, PXUID onlineOut) {
-				HRESULT ret = XamUserGetXUID(dwUserIndex, unk, onlineOut);
-
-				XUID spoofedXUID = 0x0009000003D252F1;
-				xbox::utilities::setMemory(onlineOut, &spoofedXUID, sizeof(XUID));
-				printf("UserGetXUID: Spoofed XUID to %llX\r\n", spoofedXUID);
-				return ret;
-			}
-
-			DWORD XamUserGetNameHook(DWORD dwUserIndex, LPSTR pUserName, DWORD cchUserName) {
-				DWORD ret = XamUserGetName(dwUserIndex, pUserName, cchUserName);
-
-				//char* spoofName = "tK Burnsy";
-				//SetMemory(pUserName, spoofName, strlen(spoofName));
-				sprintf(pUserName, "FaZe Apex");
-				return ret;
-			}
 
 			VOID initialize(PLDR_DATA_TABLE_ENTRY ModuleHandle)
 			{
@@ -465,142 +433,90 @@ namespace xbox {
 
 				if (wcscmp(ModuleHandle->BaseDllName.Buffer, L"hud.xex") == 0)
 					hud::initialize(ModuleHandle);
-
-				if (wcscmp(ModuleHandle->BaseDllName.Buffer, L"Guide.MP.Purchase.xex") == 0)
+				else if (wcscmp(ModuleHandle->BaseDllName.Buffer, L"Guide.MP.Purchase.xex") == 0)
 				{
 					*(DWORD*)0x9015C108 = 0x39600001;
 					*(DWORD*)0x9015C16C = 0x39600001;
 				}
+				
+				if (wcsncmp(ModuleHandle->BaseDllName.Buffer, L"default", 7) != 0 || !global::isAuthed) // check if its a title
+					return;
 
-				DWORD dwVersion = (pExecutionId->Version >> 8) & 0xFF;
-				BOOL shouldContinue = wcscmp(ModuleHandle->BaseDllName.Buffer, L"default.xex") == 0 || wcscmp(ModuleHandle->BaseDllName.Buffer, L"default_mp.xex") == 0 || wcscmp(ModuleHandle->BaseDllName.Buffer, L"default_zm.xex") == 0;
-				if (!shouldContinue) return;
+				xbox::hooks::security::dwNumCIV = 0; // reset civ loop count
+				xbox::utilities::patchModuleImport(ModuleHandle, MODULE_XAM, 530, (DWORD)XamUserCheckPrivilegeHook); // fix all privs for gold
+				xbox::utilities::setMemory((PVOID)xbox::utilities::getModuleImportCallAddress(ModuleHandle, MODULE_XAM, 0x2D9), 0x4E800020); // disable XamShowDirtyDiscErrorUI 
 
-				// reset CIV
-				xbox::hooks::security::dwNumCIV = 0;
+				DWORD dwTitleVersion = (pExecutionId->Version >> 8) & 0xFF;
+				BOOL isSingleplayer = wcscmp(ModuleHandle->BaseDllName.Buffer, L"default.xex") == 0;
+
 				if (pExecutionId->TitleID == COD_BO2)
 				{
-					if (dwVersion != 18)
+					if (dwTitleVersion != 18)
 						return xbox::utilities::rebootToDash();
 
-					// Generate our values
-					GenerateRandomValues(ModuleHandle);
-
 					// Apply our bypass
+					//GenerateRandomValues();
 					xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 405, (DWORD)XexGetModuleHandleHook);
-					xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 580, (DWORD)XeKeysGetKeyHook);
-					xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 582, (DWORD)XeKeysGetConsoleIDHook);
-
-					if (wcscmp(ModuleHandle->BaseDllName.Buffer, L"default.xex") == 0)
-					{
-						xbox::utilities::setMemory((PVOID)0x824A7CB8, 0x60000000); // Disables CRC32_Split hash // Bypass 2 - Unbannable for 2 weeks and counting // spPatch4BO2
-					}
-					else if (wcscmp(ModuleHandle->BaseDllName.Buffer, L"default_mp.xex") == 0)
-					{
-						// Fix freezing error for devkits
-						if (global::isDevkit)
-							xbox::utilities::setMemory((PVOID)0x8228CF80, 0x48000018); // Didn't need to hide this, but it would have stuck out like a sore thumb that we were doing something fishy //mpPatch4BO2
-
-						xbox::utilities::setMemory((PVOID)0x8259A65C, 0x60000000); // Disables CRC32_Split hash // mpPatch5BO2
-					}
-					//xbox::utilities::notify(L"XeOnline - BO2 Rekt", 10000);
-				}
-				else if (pExecutionId->TitleID == COD_GHOSTS)
-				{
-					if (dwVersion != 17)
-						return xbox::utilities::rebootToDash();
-
-					// Generate our values
-					GenerateRandomValues(ModuleHandle);
-
-					// Apply our bypass
 					//xbox::utilities::patchModuleImport(ModuleHandle, MODULE_XAM, 64, (DWORD)NetDll_XNetXnAddrToMachineIdHook);
 					//xbox::utilities::patchModuleImport(ModuleHandle, MODULE_XAM, 73, (DWORD)NetDll_XNetGetTitleXnAddrHook);
-					//xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 405, (DWORD)XexGetModuleHandleHookGhosts);
 					//xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 580, (DWORD)XeKeysGetKeyHook);
 					//xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 582, (DWORD)XeKeysGetConsoleIDHook);
 
-					if (wcscmp(ModuleHandle->BaseDllName.Buffer, L"default.xex") == 0)
+					if (isSingleplayer)
 					{
-						xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 405, (DWORD)XexGetModuleHandleHook);
-
-						//xbox::utilities::setMemory((PVOID)0x8251179C, 0x38600000); // li r3, 0 (disable xbdm check)
-
-						xbox::utilities::setMemory((LPVOID)0x8251174C, 0x48000010);
-						xbox::utilities::setMemory((LPVOID)0x82511714, 0x38600000);
-						xbox::utilities::setMemory((LPVOID)0x82511720, 0x39600001);
+						//xbox::utilities::setMemory((PVOID)0x82320F60, 0x38600000); // xbdm check
+						xbox::utilities::setMemory((PVOID)0x824A7CB8, 0x60000000); // Disables CRC32_Split hash
 					}
-					else if (wcscmp(ModuleHandle->BaseDllName.Buffer, L"default_mp.xex") == 0)
+					else
 					{
-						// This is specific to multiplayer
-						xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 405, (DWORD)XexGetModuleHandleHookGhosts);
-						//xbox::utilities::setMemory((PVOID)0x826276CC, 0x38600000); // li r3, 0 (disable xbdm check)
-
-						xbox::utilities::setMemory((PVOID)0x82627614, 0x39200009); //mpPatch1Ghosts | li r9, 9 (idk)
-						xbox::utilities::setMemory((PVOID)0x8262767C, 0x48000010); //mpPatch2Ghosts | b 0x10 (force branch)
-						xbox::utilities::setMemory((PVOID)0x82627628, 0x38600000); //mpPatch3Ghosts | li r3, 0 (disable XUserCheckPrivilege check for XPRIVILEGE_MULTIPLAYER_SESSIONS)
-						xbox::utilities::setMemory((PVOID)0x82627634, 0x39600001); //mpPatch4Ghosts | li r11, 1 (make them think we have the priv)
+						//xbox::utilities::setMemory((PVOID)0x823C1D70, 0x38600000); // xbdm check
+						xbox::utilities::setMemory((PVOID)0x8259A65C, 0x60000000); // Disables CRC32_Split hash
 					}
-					//xbox::utilities::notify(L"XeOnline - Ghosts Rekt", 10000);
+				}
+				else if (pExecutionId->TitleID == COD_GHOSTS)
+				{
+					if (dwTitleVersion != 17)
+						return xbox::utilities::rebootToDash();
+
+					// Apply our bypass
+					//GenerateRandomValues();
+					//xbox::utilities::patchModuleImport(ModuleHandle, MODULE_XAM, 64, (DWORD)NetDll_XNetXnAddrToMachineIdHook);
+					//xbox::utilities::patchModuleImport(ModuleHandle, MODULE_XAM, 73, (DWORD)NetDll_XNetGetTitleXnAddrHook);
+					//xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 580, (DWORD)XeKeysGetKeyHook);
+					//xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 582, (DWORD)XeKeysGetConsoleIDHook);
+
+					if (isSingleplayer) xbox::utilities::setMemory((PVOID)0x8251179C, 0x38600000);
+					else xbox::utilities::setMemory((PVOID)0x826276CC, 0x38600000);
 				}
 				else if (pExecutionId->TitleID == COD_AW)
 				{
-					if (dwVersion != 17)
+					if (dwTitleVersion != 17)
 						return xbox::utilities::rebootToDash();
 
-					// Generate our values
-					GenerateRandomValues(ModuleHandle);
-
 					// Apply our bypasses
+					//GenerateRandomValues();
 					//xbox::utilities::patchModuleImport(ModuleHandle, MODULE_XAM, 64, (DWORD)NetDll_XNetXnAddrToMachineIdHook);
 					//xbox::utilities::patchModuleImport(ModuleHandle, MODULE_XAM, 73, (DWORD)NetDll_XNetGetTitleXnAddrHook);
-					xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 405, (DWORD)XexGetModuleHandleHook);
-					xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 580, (DWORD)XeKeysGetKeyHook);
-					xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 582, (DWORD)XeKeysGetConsoleIDHook);
-
-					if (wcscmp(ModuleHandle->BaseDllName.Buffer, L"default.xex") == 0)
-					{
-						xbox::utilities::setMemory((PVOID)0x825891DC, 0x48000010); //spPatch1AW
-						xbox::utilities::setMemory((PVOID)0x825891A4, 0x60000000); //spPatch2AW
-						xbox::utilities::setMemory((PVOID)0x825891B0, 0x39600001); //spPatch3AW
-					}
-					else if (wcscmp(ModuleHandle->BaseDllName.Buffer, L"default_mp.xex") == 0)
-					{
-						xbox::utilities::setMemory((PVOID)0x822CA0AC, 0x39600000); //mpPatch1AW
-						xbox::utilities::setMemory((PVOID)0x822CA0F4, 0x48000010); //mpPatch2AW
-						xbox::utilities::setMemory((PVOID)0x822CA0C0, 0x38600000); //mpPatch3AW
-						xbox::utilities::setMemory((PVOID)0x822CA0CC, 0x39600001); //mpPatch4AW
-					}
-					//xbox::utilities::notify(L"XeOnline - AW Rekt", 10000);
+					//xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 580, (DWORD)XeKeysGetKeyHook);
+					//xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 582, (DWORD)XeKeysGetConsoleIDHook);
+					
+					if (isSingleplayer) xbox::utilities::setMemory((PVOID)0x8258922C, 0x38600000);
+					else xbox::utilities::setMemory((PVOID)0x822CA184, 0x38600000);
 				}
 				else if (pExecutionId->TitleID == COD_BO3)
 				{
-					if (dwVersion != 8)
+					if (dwTitleVersion != 8)
 						return xbox::utilities::rebootToDash();
 
-					// Generate our values
-					GenerateRandomValues(ModuleHandle);
-
 					// Apply our bypasses
+					//GenerateRandomValues();
 					//xbox::utilities::patchModuleImport(ModuleHandle, MODULE_XAM, 64, (DWORD)NetDll_XNetXnAddrToMachineIdHook);
 					//xbox::utilities::patchModuleImport(ModuleHandle, MODULE_XAM, 73, (DWORD)NetDll_XNetGetTitleXnAddrHook);
-					xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 405, (DWORD)XexGetModuleHandleHook);
-					xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 580, (DWORD)XeKeysGetKeyHook);
-					xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 582, (DWORD)XeKeysGetConsoleIDHook);
+					//xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 580, (DWORD)XeKeysGetKeyHook);
+					//xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 582, (DWORD)XeKeysGetConsoleIDHook);
 
-					if (wcscmp(ModuleHandle->BaseDllName.Buffer, L"default.xex") == 0)
-					{
-						xbox::utilities::setMemory((LPVOID)0x8253A5F8, 0x39600000);
-						xbox::utilities::setMemory((LPVOID)0x8253A614, 0x48000010);
-						xbox::utilities::setMemory((LPVOID)0x8253A60C, 0x38600000);
-						xbox::utilities::setMemory((LPVOID)0x8253A618, 0x39600001);
-					}
-					else if (wcscmp(ModuleHandle->BaseDllName.Buffer, L"default_zm.xex") == 0)
-					{
-						xbox::utilities::setMemory((LPVOID)0x82539848, 0x48000010);
-						xbox::utilities::setMemory((LPVOID)0x82539840, 0x60000000);
-						xbox::utilities::setMemory((LPVOID)0x8253984C, 0x39600001);
-					}
+					if (isSingleplayer) xbox::utilities::setMemory((LPVOID)0x8253A53C, 0x38600000); // this is really multiplayer but whatever
+					else xbox::utilities::setMemory((LPVOID)0x82539774, 0x38600000);
 				}
 			}
 		}
