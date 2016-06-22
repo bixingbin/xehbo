@@ -74,7 +74,7 @@ DWORD XamLoaderExecuteAsyncChallenge(DWORD dwAddress, DWORD dwTaskParam1, PBYTE 
 	*(WORD*)(pbBuffer + 0x14A) = xbox::keyvault::data::buffer.OddFeatures; // cache
 	*(DWORD*)(pbBuffer + 0x150) = xbox::keyvault::data::buffer.PolicyFlashSize; // cache
 	*(DWORD*)(pbBuffer + 0x158) = xbox::keyvault::data::hvStatusFlags;// cache
-	*(QWORD*)(pbBuffer + 0x198) = 4 | ((*(QWORD*)0x8E038678) & 1);
+	*(QWORD*)(pbBuffer + 0x198) = 4 | ((*(QWORD*)0x8E038678) & 1); // seems to work
 
 	//xbox::utilities::writeFile("XeOnline:\\XOSC.bin", pbBuffer, cbBuffer);
 	return 0;

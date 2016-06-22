@@ -23,9 +23,6 @@
     <ClInclude Include="hooks.h">
       <Filter>Header Files\xbox</Filter>
     </ClInclude>
-    <ClInclude Include="hypervisor.h">
-      <Filter>Header Files\xbox</Filter>
-    </ClInclude>
     <ClInclude Include="utilities.h">
       <Filter>Header Files\xbox</Filter>
     </ClInclude>
@@ -40,6 +37,9 @@
     </ClInclude>
     <ClInclude Include="server.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="hypervisor.h">
+      <Filter>Header Files\xbox</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

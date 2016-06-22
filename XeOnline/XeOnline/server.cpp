@@ -317,8 +317,6 @@ namespace server {
 
 			Sleep(3000);
 			
-			xbox::utilities::log("isd=%X", xbox::utilities::callRemoteFunction((DWORD)xbox::utilities::resolveFunction(MODULE_XAM, 462)));
-
 			for (int i = 0; i < 10; i++)
 			{
 				if (initNetwork() == S_OK)
