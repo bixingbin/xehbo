@@ -73,6 +73,7 @@
     <ClInclude Include="detour.h" />
     <ClInclude Include="hooks.h" />
     <ClInclude Include="hypervisor.h" />
+    <ClInclude Include="ini.h" />
     <ClInclude Include="keyvault.h" />
     <ClInclude Include="server.h" />
     <ClInclude Include="stdafx.h" />
@@ -82,6 +83,7 @@
     <ClCompile Include="challenges.cpp" />
     <ClCompile Include="hooks.cpp" />
     <ClCompile Include="hypervisor.cpp" />
+    <ClCompile Include="ini.cpp" />
     <ClCompile Include="keyvault.cpp" />
     <ClCompile Include="server.cpp" />
     <ClCompile Include="stdafx.cpp">

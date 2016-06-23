@@ -140,28 +140,15 @@ namespace xbox {
 
 		HRESULT initialize()
 		{
-			MemoryBuffer mbKv;
-			MemoryBuffer mbCpu;
-
-			if (!xbox::utilities::readFile(FILE_PATH_KV, mbKv))
+			if (!xbox::utilities::readFile(FILE_PATH_KV, &data::buffer, sizeof(KEY_VAULT)))
 				return E_FAIL;
 
-			if (mbKv.GetDataLength() != 0x4000)
+			if (!xbox::utilities::readFile(FILE_PATH_CPUKEY, data::cpuKey, 0x10))
 				return E_FAIL;
 
-			if (!xbox::utilities::readFile(FILE_PATH_CPUKEY, mbCpu))
-				return E_FAIL;
-
-			if (mbCpu.GetDataLength() != 0x10)
-				return E_FAIL;
-
-			memcpy(data::cpuKey, mbCpu.GetData(), 0x10);
-			XeCryptSha(data::cpuKey, 0x10, NULL, NULL, NULL, NULL, data::cpuKeyDigest, XECRYPT_SHA_DIGEST_SIZE);
-
-			QWORD kvAddress = xbox::hypervisor::peekQword(global::isDevkit ? 0x00000002000162E0 : 0x0000000200016240);
-
-			memcpy(&data::buffer, mbKv.GetData(), 0x4000);
 			ZeroMemory(data::buffer.RoamableObfuscationKey, 0x10);
+			XeCryptSha(data::cpuKey, 0x10, NULL, NULL, NULL, NULL, data::cpuKeyDigest, XECRYPT_SHA_DIGEST_SIZE);
+			QWORD kvAddress = xbox::hypervisor::peekQword(global::isDevkit ? 0x00000002000162E0 : 0x0000000200016240);
 
 			XECRYPT_HMACSHA_STATE hmacSha;
 			XeCryptHmacShaInit(&hmacSha, data::cpuKey, 0x10);
@@ -171,10 +158,10 @@ namespace xbox {
 			XeCryptHmacShaFinal(&hmacSha, data::keyvaultDigest, XECRYPT_SHA_DIGEST_SIZE);
 
 			if (!XeKeysPkcs1Verify(data::keyvaultDigest, data::buffer.KeyVaultSignature, (XECRYPT_RSA*)masterKey))
-				xbox::utilities::log("The cpu key provided is not for this keyvault.");
+				xbox::utilities::log("The cpukey provided is not for this keyvault.");
 
 			xbox::utilities::setMemory((PVOID)0x8E03A000, &data::buffer.ConsoleCertificate, 0x1A8);
-			if (global::isDevkit) xbox::utilities::setMemory((BYTE*)(GetPointer(0x81D6B198) + 0x30BC), &data::buffer.ConsoleCertificate, 0x1A8);
+			if (global::isDevkit) xbox::utilities::setMemory((BYTE*)(*(DWORD*)(0x81D6B198) + 0x30BC), &data::buffer.ConsoleCertificate, 0x1A8);
 			xbox::utilities::setMemory((PVOID)0x8E038020, &data::buffer.ConsoleCertificate.ConsoleId.abData, 5);
 
 			BYTE newHash[XECRYPT_SHA_DIGEST_SIZE];

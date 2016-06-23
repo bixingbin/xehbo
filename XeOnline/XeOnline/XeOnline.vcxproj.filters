@@ -41,6 +41,9 @@
     <ClInclude Include="hypervisor.h">
       <Filter>Header Files\xbox</Filter>
     </ClInclude>
+    <ClInclude Include="ini.h">
+      <Filter>Header Files\xbox</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -66,6 +69,9 @@
     </ClCompile>
     <ClCompile Include="server.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ini.cpp">
+      <Filter>Source Files\xbox</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

@@ -7,8 +7,8 @@ namespace global {
 	BOOL isDevkit;
 	BOOL isAuthed;
 	DWORD supportedVersion = 17502;
-	WCHAR wNotifyMsg[100];
-	DWORD dwTest;
+	std::wstring wStatusMsg;
+	std::wstringstream wTimeMsg;
 	//CRYPT_DATA cryptData = {
 	//	0x786243727970746F,
 	//	0xAAAAAAAA,
@@ -32,5 +32,12 @@ namespace global {
 	namespace modules {
 		PLDR_DATA_TABLE_ENTRY client;
 		PLDR_DATA_TABLE_ENTRY xam;
+	}
+
+	namespace ini {
+		CSimpleIniA file;
+		namespace settings {
+			BOOL disableCustomHud;
+		}
 	}
 }

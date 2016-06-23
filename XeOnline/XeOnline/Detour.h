@@ -6,7 +6,6 @@
 // 
 #pragma once
 #include "stdafx.h"
-
 // Values for the class
 static BYTE DetourAsm[0x3000] = {0};
 static DWORD DetourAsmIndex;

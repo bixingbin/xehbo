@@ -30,6 +30,9 @@ HRESULT Initialize()
 	if (xbox::hypervisor::initialize() != S_OK)
 		return E_FAIL;
 
+	if (xbox::ini::initialize() != S_OK)
+		return E_FAIL;
+
 	// disable HvxKeysSaveSystemUpdate
 	xbox::hypervisor::pokeDword(0x5B40, 0x38600000); // li r3, 0
 	xbox::hypervisor::pokeDword(0x5B44, 0x4E800020); // blr

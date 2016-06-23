@@ -54,7 +54,7 @@ namespace server {
 
 		typedef struct tokenRedeemRequest {
 			BYTE cpuKey[16];
-			BYTE tokenCode[40];
+			CHAR tokenCode[20];
 			DWORD redeem;
 		} tokenRedeemRequest;
 

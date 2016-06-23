@@ -52,7 +52,7 @@ VOID HalSendSMCMessageBranch(LPVOID pCommandBuffer, LPVOID pRecvBuffer)
 {
 	HalSendSMCMessage(pCommandBuffer, pRecvBuffer);
 	*(DWORD*)pRecvBuffer = xbox::keyvault::data::smcData; // set proper smc data
-	*(DWORD*)0x90015B0C = 0x48000B95; // undo xosc xex modification
+	*(DWORD*)0x90015B0C = 0x48000B95; // undo this branch so it hashes properly
 }
 
 DWORD XamLoaderExecuteAsyncChallenge(DWORD dwAddress, DWORD dwTaskParam1, PBYTE pbDaeTableName, DWORD szDaeTableName, PBYTE pbBuffer, DWORD cbBuffer)

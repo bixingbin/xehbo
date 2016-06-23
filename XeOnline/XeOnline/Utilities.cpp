@@ -2,25 +2,18 @@
 
 namespace xbox {
 	namespace utilities {
-		VOID log(const CHAR* strFormat, ...)
+		VOID log(const CHAR* format, ...)
 		{
 			CHAR buffer[1000];
 			va_list pArgList;
-			va_start(pArgList, strFormat);
-			vsprintf_s(buffer, 1000, strFormat, pArgList);
+			va_start(pArgList, format);
+			vsprintf_s(buffer, 1000, format, pArgList);
 			va_end(pArgList);
-
-			//printf("[XeOnline] %s\n", buffer);
-
-			std::cout << "[XeOnline] " << buffer << std::endl;
 
 			std::ofstream writeLog;
 			writeLog.open(FILE_PATH_LOG, std::ofstream::app);
-			if (writeLog.is_open())
-			{
-				writeLog.write(buffer, strlen(buffer));
-				writeLog.write("\n", 1);
-			}
+			if (writeLog.is_open()) writeLog << buffer << std::endl;
+			std::cout << "[XeOnline] " << buffer << std::endl;
 			writeLog.close();
 		}
 
@@ -48,15 +41,15 @@ namespace xbox {
 			return S_OK;
 		}
 
-		VOID setNotifyMsg(WCHAR* msg)
-		{
-			wcsncpy(global::wNotifyMsg, msg, sizeof(global::wNotifyMsg) / sizeof(WCHAR));
-		}
+		//VOID setNotifyMsg(WCHAR* msg)
+		//{
+		//	wcsncpy(global::wNotifyMsg, msg, sizeof(global::wNotifyMsg) / sizeof(WCHAR));
+		//}
 
-		BOOL isNotifyMsgSet()
-		{
-			return (global::wNotifyMsg[0] != 0 && global::wNotifyMsg[1] != 0);
-		}
+		//BOOL isNotifyMsgSet()
+		//{
+		//	return (global::wNotifyMsg[0] != 0 && global::wNotifyMsg[1] != 0);
+		//}
 
 		VOID launchDefaultApp()
 		{
@@ -211,76 +204,31 @@ namespace xbox {
 			return result;
 		}
 
-		BOOL readFile(const CHAR * FileName, MemoryBuffer &pBuffer)
+		BOOL readFile(const CHAR* fileName, PVOID pBuffer, DWORD cbBuffer)
 		{
-			HANDLE hFile; DWORD dwFileSize, dwNumberOfBytesRead;
-			hFile = CreateFile(FileName, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-			if (hFile == INVALID_HANDLE_VALUE)
-			{
-				//DbgPrint("readFile - CreateFile failed");
+			std::ifstream file(fileName, std::ios::binary);
+			
+			if (!file.is_open())
 				return FALSE;
-			}
-			dwFileSize = GetFileSize(hFile, NULL);
-			PBYTE lpBuffer = (BYTE*)malloc(dwFileSize);
-			if (lpBuffer == NULL)
-			{
-				CloseHandle(hFile);
-				//DbgPrint("readFile - malloc failed");
+
+			if (!file.read((char*)pBuffer, cbBuffer))
 				return FALSE;
-			}
-			if (ReadFile(hFile, lpBuffer, dwFileSize, &dwNumberOfBytesRead, NULL) == FALSE)
-			{
-				free(lpBuffer);
-				CloseHandle(hFile);
-				//DbgPrint("readFile - ReadFile failed");
-				return FALSE;
-			}
-			else if (dwNumberOfBytesRead != dwFileSize)
-			{
-				free(lpBuffer);
-				CloseHandle(hFile);
-				//DbgPrint("readFile - Failed to read all the bytes");
-				return FALSE;
-			}
-			CloseHandle(hFile);
-			pBuffer.Add(lpBuffer, dwFileSize);
-			free(lpBuffer);
+
+			file.close();
 			return TRUE;
 		}
 
-		BOOL writeFile(const CHAR* FilePath, const VOID* Data, DWORD Size)
+		BOOL writeFile(const CHAR* fileName, PVOID pBuffer, DWORD cbBuffer)
 		{
-			// Open our file
-			HANDLE fHandle = CreateFile(FilePath, GENERIC_WRITE, FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-			if (fHandle == INVALID_HANDLE_VALUE)
-			{
-				//DbgPrint("writeFile - CreateFile failed");
+			std::ofstream file(fileName, std::ios::binary);
+
+			if (!file.is_open())
 				return FALSE;
-			}
 
-			// Write our data and close
-			DWORD writeSize = Size;
-			if (WriteFile(fHandle, Data, writeSize, &writeSize, NULL) != TRUE)
-			{
-				//DbgPrint("writeFile - WriteFile failed");
+			if (!file.write((char*)pBuffer, cbBuffer))
 				return FALSE;
-			}
 
-			CloseHandle(fHandle);
-			return TRUE;
-		}
-
-		BOOL fileExists(LPCSTR lpFileName)
-		{
-			// Try and get the file attributes.
-			if (GetFileAttributes(lpFileName) == -1)
-			{
-				DWORD lastError = GetLastError();
-				if (lastError == ERROR_FILE_NOT_FOUND || lastError == ERROR_PATH_NOT_FOUND)
-					return FALSE;
-			}
-
-			// The file must exist if we got this far..
+			file.close();
 			return TRUE;
 		}
 
@@ -307,25 +255,11 @@ namespace xbox {
 			return E_FAIL;
 		}
 
-		DWORD applyPatches(VOID* patches, CHAR* filePath)
+		DWORD applyPatches(VOID* patches)
 		{
 			// Read our file
 			DWORD patchCount = 0;
-			MemoryBuffer mbPatches;
 			DWORD* patchData = (DWORD*)patches;
-
-			// Check if we have our override patches
-			if (filePath != NULL && fileExists(filePath))
-			{
-				if (!readFile(filePath, mbPatches))
-				{
-					//DbgPrint("ApplyPatches - readFile failed");
-					return 0;
-				}
-
-				// Set our patch data now..
-				patchData = (DWORD*)mbPatches.GetData();
-			}
 
 			if (patchData == NULL)
 				return 0;

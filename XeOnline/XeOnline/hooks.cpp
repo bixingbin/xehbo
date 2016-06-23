@@ -35,8 +35,7 @@ namespace xbox {
 
 					// set our message
 					std::wstring wHudMessage = global::isAuthed ? L"Status: Enabled" : L"Status: Disabled";
-					wHudMessage.append(L" | ");
-					wHudMessage.append(global::wNotifyMsg);
+					wHudMessage.append(L" | " + (global::wStatusMsg.empty() ? global::wTimeMsg.str() : global::wStatusMsg));
 
 					// get Tabscene
 					HXUIOBJ hTabscene;
@@ -177,7 +176,6 @@ namespace xbox {
 				return XexGetProcedureAddress(hand, dwOrdinal, pvAddress);
 			}
 		}
-
 		namespace system {
 			PVOID rtlImageXexHeaderField(PVOID headerBase, DWORD imageField)
 			{
@@ -269,21 +267,6 @@ namespace xbox {
 
 			VOID GenerateRandomValues()
 			{
-				// Generate random machine id
-				//BYTE* MachineID = (BYTE*)XPhysicalAlloc(8, MAXULONG_PTR, NULL, PAGE_READWRITE);
-				//if (MachineID == NULL)
-				//{
-				//	xbox::utilities::log("error allocating buffer!");
-				//	HalReturnToFirmware(HalResetSMCRoutine);
-				//}
-				//MachineID[0] = 0xFA;
-				//MachineID[1] = 0x00;
-				//MachineID[2] = 0x00;
-				//MachineID[3] = 0x00;
-				//XeCryptRandom((BYTE*)(MachineID + 4), 4);
-				//xbox::utilities::setMemory(&RandomMachineID, MachineID, 8);
-				//XPhysicalFree(MachineID);
-
 				// generate random machine id
 				RandomMachineID[0] = 0xFA;
 				RandomMachineID[1] = 0x00;
@@ -292,43 +275,36 @@ namespace xbox {
 				XeCryptRandom(RandomMachineID + 4, 4);
 
 				// Generate random mac address
-				if ((XboxHardwareInfo->Flags & 0xF0000000) > 0x40000000) {
-					RandomMacAddress[0] = 0x7C;
-					RandomMacAddress[1] = 0xED;
-					RandomMacAddress[2] = 0x8D;
-				}
-				else {
-					RandomMacAddress[0] = 0x00;
-					RandomMacAddress[1] = 0x22;
-					RandomMacAddress[2] = 0x48;
-				}
+				ExGetXConfigSetting(XCONFIG_SECURED_CATEGORY, XCONFIG_SECURED_MAC_ADDRESS, RandomMacAddress, 6, NULL);
 				XeCryptRandom(RandomMacAddress + 3, 3);
 
-				for (int i = 0; i < 12; i++) RandomConsoleSerialNumber[i] = GenerateRandomNumericalCharacter(); // Generate random console serial number
-				for (int i = 0; i < 12; i++) RandomConsoleID[i] = GenerateRandomNumericalCharacter(); // Generate random console id
+				// Generate random console serial number
+				for (int i = 0; i < 12; i++) 
+					RandomConsoleSerialNumber[i] = GenerateRandomNumericalCharacter(); 
+
+				// Generate random console id
+				for (int i = 0; i < 12; i++)
+					RandomConsoleID[i] = GenerateRandomNumericalCharacter(); 
 			}
 
 			DWORD NetDll_XNetXnAddrToMachineIdHook(XNCALLER_TYPE xnc, const XNADDR* pxnaddr, QWORD* pqwMachineId)
 			{
-				*pqwMachineId = (QWORD)RandomMachineID;
+				*pqwMachineId = (QWORD)&RandomMachineID;
 				//DbgPrint("NetDll_XNetXnAddrToMachineIdHook spoofed."); would crash on Ghosts
 				return ERROR_SUCCESS;
 			}
 
 			DWORD NetDll_XNetGetTitleXnAddrHook(XNCALLER_TYPE xnc, XNADDR *pxna)
 			{
-				DWORD retVal = NetDll_XNetGetTitleXnAddr(XNCALLER_TITLE, pxna);
+				DWORD ret = NetDll_XNetGetTitleXnAddr(XNCALLER_TITLE, pxna);
 
 				XNADDR ourAddr;
-
 				XNetGetTitleXnAddr(&ourAddr);
-				if (memcmp(&ourAddr, pxna, sizeof(XNADDR) == 0))
-				{
+				if (memcmp(&ourAddr, pxna, sizeof(XNADDR)) == 0)
 					xbox::utilities::setMemory((BYTE*)pxna->abEnet, RandomMacAddress, 6);
-				}
 
 				//DbgPrint("NetDll_XNetGetTitleXnAddrHook spoofed."); would crash on Ghosts
-				return retVal;
+				return ret;
 			}
 
 			DWORD XeKeysGetConsoleIDHook(PBYTE databuffer, char* szBuffer)
@@ -341,7 +317,7 @@ namespace xbox {
 
 			DWORD XeKeysGetKeyHook(WORD KeyId, PVOID KeyBuffer, PDWORD KeyLength)
 			{
-				if (KeyId == 0x14)
+				if (KeyId == XEKEY_CONSOLE_SERIAL_NUMBER)
 				{
 					xbox::utilities::setMemory(KeyBuffer, RandomConsoleSerialNumber, 0xC);
 					//xbox::utilities::log("XeKeysGetKey spoofed."); would crash on Ghosts
@@ -358,11 +334,9 @@ namespace xbox {
 				__asm mr callAddr, r12;
 
 				xbox::utilities::log("moduleName = %s, called from 0x%X", moduleName, callAddr - 4);
-				if (moduleName != NULL) // <-- BO2 throws us a null module name to cause a crash, kinda cute
+				if (moduleName != NULL) // demonware calls null sometimes
 				{
-					char buff[4];
-					memcpy(buff, moduleName, 4);
-					if (memcmp(buff, "xbdm", 4) == 0)
+					if (strncmp(moduleName, "xbdm", 4) == 0)
 					{
 						*hand = 0;
 						return 0xC0000225; // Module not found
@@ -431,13 +405,14 @@ namespace xbox {
 				xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 408, (DWORD)system::xexLoadExecutable);
 				xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 409, (DWORD)system::xexLoadImage);
 
-				if (wcscmp(ModuleHandle->BaseDllName.Buffer, L"hud.xex") == 0)
-					hud::initialize(ModuleHandle);
-				else if (wcscmp(ModuleHandle->BaseDllName.Buffer, L"Guide.MP.Purchase.xex") == 0)
+				if (wcscmp(ModuleHandle->BaseDllName.Buffer, L"Guide.MP.Purchase.xex") == 0)
 				{
 					*(DWORD*)0x9015C108 = 0x39600001;
 					*(DWORD*)0x9015C16C = 0x39600001;
 				}
+				else if (wcscmp(ModuleHandle->BaseDllName.Buffer, L"hud.xex") == 0)
+					if (!global::ini::settings::disableCustomHud)
+						hud::initialize(ModuleHandle);
 
 				if (wcsncmp(ModuleHandle->BaseDllName.Buffer, L"default", 7) != 0 || !global::isAuthed) // check if its a title
 					return;
@@ -456,7 +431,7 @@ namespace xbox {
 
 					// Apply our bypass
 					//GenerateRandomValues();
-					xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 405, (DWORD)XexGetModuleHandleHook);
+					//xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 405, (DWORD)XexGetModuleHandleHook);
 					//xbox::utilities::patchModuleImport(ModuleHandle, MODULE_XAM, 64, (DWORD)NetDll_XNetXnAddrToMachineIdHook);
 					//xbox::utilities::patchModuleImport(ModuleHandle, MODULE_XAM, 73, (DWORD)NetDll_XNetGetTitleXnAddrHook);
 					//xbox::utilities::patchModuleImport(ModuleHandle, MODULE_KERNEL, 580, (DWORD)XeKeysGetKeyHook);
@@ -464,12 +439,12 @@ namespace xbox {
 
 					if (isSingleplayer)
 					{
-						//xbox::utilities::setMemory((PVOID)0x82320F60, 0x38600000); // xbdm check
+						xbox::utilities::setMemory((PVOID)0x82320F60, 0x38600000); // xbdm check
 						xbox::utilities::setMemory((PVOID)0x824A7CB8, 0x60000000); // Disables CRC32_Split hash
 					}
 					else
 					{
-						//xbox::utilities::setMemory((PVOID)0x823C1D70, 0x38600000); // xbdm check
+						xbox::utilities::setMemory((PVOID)0x823C1D70, 0x38600000); // xbdm check
 						xbox::utilities::setMemory((PVOID)0x8259A65C, 0x60000000); // Disables CRC32_Split hash
 					}
 				}
